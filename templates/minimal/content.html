@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'NotoSansSC';
+            src: local('Noto Sans SC'), local('PingFang SC'), local('Microsoft YaHei'), local('SimHei'), sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'NotoSansSC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            width: 900px;
+            height: 1200px;
+            background: #fafaf9;
+            display: flex;
+            flex-direction: column;
+            padding: 48px 56px;
+            position: relative;
+            overflow: hidden;
+            color: #1c1917;
+        }
+        /* 背景 */
+        .bg-pattern {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(circle at 90% 10%, rgba(217, 119, 6, 0.03) 0%, transparent 40%);
+            pointer-events: none;
+        }
+        /* 顶部装饰线 */
+        .top-accent {
+            position: absolute;
+            top: 0;
+            left: 56px;
+            right: 56px;
+            height: 3px;
+            background: #d97706;
+        }
+        /* 页眉 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 36px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e7e5e4;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #a8a29e;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        .page-num {
+            font-size: 48px;
+            font-weight: 300;
+            color: #e7e5e4;
+            line-height: 1;
+        }
+        /* 内容区域 */
+        .body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            overflow: hidden;
+        }
+        /* 要点卡片 */
+        .point-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 28px;
+            border: 1px solid #f5f5f4;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .point-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .point-num {
+            font-size: 12px;
+            font-weight: 700;
+            color: #d97706;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #d97706;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .point-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1c1917;
+            line-height: 1.3;
+        }
+        .point-content {
+            font-size: 16px;
+            color: #57534e;
+            line-height: 1.7;
+            padding-left: 42px;
+        }
+        /* 核心高亮 */
+        .highlight-text {
+            background: linear-gradient(180deg, transparent 60%, #fef3c7 60%);
+            padding: 0 3px;
+            font-weight: 600;
+            color: #92400e;
+        }
+        /* 金句 */
+        .quote-box {
+            background: #f5f5f4;
+            border-left: 4px solid #d97706;
+            padding: 24px 28px;
+            margin-top: 4px;
+            border-radius: 0 12px 12px 0;
+        }
+        .quote-text {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.7;
+            color: #1c1917;
+            font-style: italic;
+        }
+        .quote-source {
+            display: block;
+            text-align: right;
+            font-size: 14px;
+            color: #a8a29e;
+            margin-top: 12px;
+            font-weight: 500;
+        }
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #f5f5f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .source {
+            font-size: 12px;
+            color: #d6d3d1;
+            letter-spacing: 1px;
+        }
+        .page-indicator {
+            font-size: 12px;
+            color: #d6d3d1;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="top-accent"></div>
+
+    <div class="header">
+        <span class="section-title">{{ section_title }}</span>
+        <span class="page-num">{{ "%02d"|format(page_num) }}</span>
+    </div>
+
+    <div class="body">
+        {% for point in key_points %}
+        <div class="point-card">
+            <div class="point-header">
+                <span class="point-num">{{ loop.index }}</span>
+                <h3 class="point-title">{{ point.title }}</h3>
+            </div>
+            <p class="point-content">
+                {{ point.content }}
+                {% if point.highlight %}
+                <span class="highlight-text">{{ point.highlight }}</span>
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+
+        {% for quote in quotes %}
+        <div class="quote-box">
+            <p class="quote-text">"{{ quote.text }}"</p>
+            <span class="quote-source">— {{ quote.speaker }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        <span class="source">
+            {{ source_info.podcast_name or '' }} | {{ source_info.episode_title or '' }}
+        </span>
+        <span class="page-indicator">{{ page_num }} / ?</span>
+    </div>
+</body>
+</html>

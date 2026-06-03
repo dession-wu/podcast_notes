@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            width: 900px;
+            height: 1200px;
+            background: #f7fafc;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 45px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 顶部装饰条 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #1a365d 0%, #ed8936 100%);
+        }
+        
+        /* 标题区域 */
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid rgba(0,0,0,0.06);
+            flex-shrink: 0;
+        }
+        
+        .header-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .header-title {
+            font-size: 30px;
+            font-weight: 900;
+            color: #1a365d;
+            letter-spacing: 2px;
+        }
+        
+        .header-subtitle {
+            font-size: 15px;
+            color: #718096;
+            margin-top: 6px;
+        }
+        
+        /* 阶段列表 */
+        .stages-list {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        
+        .stage-item {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 14px 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border-left: 4px solid #ed8936;
+        }
+        
+        .stage-header {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .stage-num {
+            font-size: 20px;
+            font-weight: 900;
+            color: #1a365d;
+            min-width: 32px;
+        }
+        
+        .stage-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3748;
+            flex: 1;
+        }
+        
+        .stage-time {
+            font-size: 13px;
+            color: #718096;
+            background: #fef3c7;
+            padding: 2px 8px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        
+        .topics-list {
+            padding-left: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .topic-item {
+            font-size: 15px;
+            color: #2d3748;
+            line-height: 1.5;
+            position: relative;
+            padding-left: 16px;
+        }
+        
+        .topic-item::before {
+            content: "○";
+            position: absolute;
+            left: 0;
+            color: #ed8936;
+            font-size: 10px;
+            top: 2px;
+        }
+        
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .source {
+            font-size: 13px;
+            color: #718096;
+        }
+        
+        .page-indicator {
+            font-size: 13px;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"></div>
+    
+    <div class="header">
+        <div class="header-icon">🔥</div>
+        <h1 class="header-title">内容概要</h1>
+        <p class="header-subtitle">2 个阶段 · 3 个核心话题</p>
+    </div>
+    
+    <div class="stages-list">
+        
+        <div class="stage-item">
+            <div class="stage-header">
+                <span class="stage-num">1</span>
+                <span class="stage-title">一、技术突围：从软硬之争到扫码支付</span>
+                
+                <span class="stage-time">2008-2012</span>
+                
+            </div>
+            <div class="topics-list">
+                
+                <div class="topic-item">为什么扫码支付成了移动支付主路径？</div>
+                
+                <div class="topic-item">为什么是支付宝笑到最后？</div>
+                
+            </div>
+        </div>
+        
+        <div class="stage-item">
+            <div class="stage-header">
+                <span class="stage-num">2</span>
+                <span class="stage-title">二、生态裂变：支付衍生的第二曲线</span>
+                
+                <span class="stage-time">2013-2016</span>
+                
+            </div>
+            <div class="topics-list">
+                
+                <div class="topic-item">水电煤缴费16年不赚钱为何还要做？</div>
+                
+            </div>
+        </div>
+        
+    </div>
+    
+    <div class="footer">
+        <span class="source">
+            <span>🎙️</span>
+            商业就是这样 | 支付宝20年
+        </span>
+        <span class="page-indicator">02 / 6</span>
+    </div>
+</body>
+</html>

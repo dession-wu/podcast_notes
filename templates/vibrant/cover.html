@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'NotoSansSC';
+            src: local('Noto Sans SC'), local('PingFang SC'), local('Microsoft YaHei'), local('SimHei'), sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'NotoSansSC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            width: 900px;
+            height: 1200px;
+            background: linear-gradient(160deg, #fff1f2 0%, #ffe4e6 50%, #fff1f2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            color: #881337;
+        }
+        /* 背景装饰 */
+        .blob-1 {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            opacity: 0.06;
+            top: -150px;
+            right: -120px;
+            filter: blur(60px);
+        }
+        .blob-2 {
+            position: absolute;
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%);
+            opacity: 0.08;
+            bottom: -120px;
+            left: -100px;
+            filter: blur(50px);
+        }
+        .blob-3 {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            opacity: 0.05;
+            top: 35%;
+            left: 8%;
+            filter: blur(40px);
+        }
+        /* 漂浮小圆点 */
+        .dot {
+            position: absolute;
+            border-radius: 50%;
+            background: #ec4899;
+        }
+        .dot-1 { width: 14px; height: 14px; top: 12%; right: 12%; opacity: 0.12; }
+        .dot-2 { width: 10px; height: 10px; top: 22%; left: 10%; opacity: 0.08; }
+        .dot-3 { width: 18px; height: 18px; bottom: 18%; right: 18%; opacity: 0.1; }
+        .dot-4 { width: 8px; height: 8px; bottom: 28%; left: 15%; opacity: 0.15; }
+        .dot-5 { width: 12px; height: 12px; top: 45%; right: 8%; opacity: 0.06; }
+        /* 波浪装饰 */
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(180deg, transparent 0%, rgba(236, 72, 153, 0.04) 100%);
+            border-radius: 100% 100% 0 0 / 60px 60px 0 0;
+        }
+        /* 内容区域 */
+        .content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 60px 70px;
+            max-width: 800px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 12px 32px;
+            border-radius: 999px;
+            margin-bottom: 44px;
+            letter-spacing: 2px;
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
+        }
+        .title {
+            color: #881337;
+            font-size: 52px;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 28px;
+        }
+        .subtitle {
+            color: #be185d;
+            font-size: 20px;
+            font-weight: 500;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        .divider {
+            width: 64px;
+            height: 5px;
+            background: linear-gradient(90deg, #ec4899 0%, #f59e0b 100%);
+            margin: 0 auto 32px;
+            border-radius: 999px;
+        }
+        .meta {
+            color: #f472b6;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 28px;
+        }
+        .meta strong {
+            color: #be185d;
+            font-weight: 700;
+        }
+        /* 标签云 */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .tag {
+            background: #ffffff;
+            color: #ec4899;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 8px 18px;
+            border-radius: 999px;
+            border: 2px solid #fecdd3;
+            box-shadow: 0 2px 8px rgba(236, 72, 153, 0.1);
+        }
+        /* 底部 */
+        .footer {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #f472b6;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="blob-1"></div>
+    <div class="blob-2"></div>
+    <div class="blob-3"></div>
+    <div class="dot dot-1"></div>
+    <div class="dot dot-2"></div>
+    <div class="dot dot-3"></div>
+    <div class="dot dot-4"></div>
+    <div class="dot dot-5"></div>
+    <div class="wave"></div>
+
+    <div class="content">
+        <div class="badge">
+            <span style="font-size:20px;">&#127911;</span>
+            <span>播客笔记</span>
+        </div>
+        <h1 class="title">{{ title }}</h1>
+        <p class="subtitle">{{ podcast_name }} | {{ episode_title }}</p>
+        <div class="divider"></div>
+        {% if guests %}
+        <p class="meta">嘉宾：<strong>{{ guests }}</strong></p>
+        {% endif %}
+        <div class="tags">
+            <span class="tag">#知识分享</span>
+            <span class="tag">#播客推荐</span>
+            <span class="tag">#个人成长</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        内容提炼自播客《{{ podcast_name }}》
+    </div>
+</body>
+</html>

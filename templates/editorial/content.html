@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'NotoSerifSC';
+            src: local('Noto Serif SC'), local('Songti SC'), local('SimSun'), Georgia, serif;
+        }
+        @font-face {
+            font-family: 'NotoSansSC';
+            src: local('Noto Sans SC'), local('PingFang SC'), local('Microsoft YaHei'), sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'NotoSerifSC', 'Songti SC', Georgia, serif;
+            width: 900px;
+            height: 1200px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            padding: 48px 56px;
+            position: relative;
+            overflow: hidden;
+            color: #0f172a;
+        }
+        /* 顶部粗线 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: #0f172a;
+        }
+        /* 背景网格 */
+        .bg-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+        /* 页眉 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #0f172a;
+        }
+        .section-title {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+        .page-num {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
+            color: #0f172a;
+            opacity: 0.08;
+            line-height: 0.8;
+        }
+        /* 内容区域 — 支持章节结构 */
+        .body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow: hidden;
+        }
+        /* 章节标题 */
+        .chapter-title {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #dc2626;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        /* 要点 — 杂志排版，更紧凑 */
+        .point-card {
+            position: relative;
+            padding-left: 28px;
+            border-left: 3px solid #dc2626;
+        }
+        .point-num {
+            position: absolute;
+            left: -14px;
+            top: -4px;
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: #dc2626;
+            opacity: 0.25;
+            line-height: 1;
+        }
+        .point-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+        .point-content {
+            font-size: 14px;
+            color: #475569;
+            line-height: 1.7;
+        }
+        /* 子要点列表 */
+        .sub-points {
+            margin-top: 8px;
+            padding-left: 0;
+            list-style: none;
+        }
+        .sub-points li {
+            position: relative;
+            padding-left: 16px;
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 4px;
+        }
+        .sub-points li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 9px;
+            width: 5px;
+            height: 5px;
+            background: #dc2626;
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+        /* 核心高亮 — 下划线风格 */
+        .highlight-text {
+            border-bottom: 2px solid #dc2626;
+            padding-bottom: 1px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        /* 金句 — 大引号 */
+        .quote-box {
+            background: #0f172a;
+            padding: 24px 28px;
+            position: relative;
+            margin-top: 4px;
+        }
+        .quote-box::before {
+            content: '\201C';
+            position: absolute;
+            top: 12px;
+            left: 20px;
+            font-size: 64px;
+            font-family: Georgia, serif;
+            color: #dc2626;
+            opacity: 0.35;
+            line-height: 1;
+        }
+        .quote-text {
+            font-size: 17px;
+            font-weight: 600;
+            line-height: 1.5;
+            color: #f8fafc;
+            padding-left: 36px;
+            position: relative;
+            z-index: 1;
+        }
+        .quote-source {
+            display: block;
+            text-align: right;
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 12px;
+            color: rgba(255,255,255,0.65);
+            margin-top: 10px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'NotoSansSC', sans-serif;
+        }
+        .source {
+            font-size: 11px;
+            color: #94a3b8;
+            letter-spacing: 1px;
+        }
+        .page-indicator {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"></div>
+    <div class="bg-grid"></div>
+
+    <div class="header">
+        <span class="section-title">{{ section_title }}</span>
+        <span class="page-num">{{ "%02d"|format(page_num) }}</span>
+    </div>
+
+    <div class="body">
+        {% for chapter in chapters %}
+        {% if chapter.title %}
+        <div class="chapter-title">{{ chapter.title }}</div>
+        {% endif %}
+
+        {% for sub in chapter.subsections %}
+        <div class="point-card">
+            <span class="point-num">0{{ loop.index }}</span>
+            <h3 class="point-title">{{ sub.subtitle }}</h3>
+            <p class="point-content">
+                {{ sub.content }}
+            </p>
+            {% if sub.highlights %}
+            <ul class="sub-points">
+                {% for h in sub.highlights %}
+                <li><span class="highlight-text">{{ h }}</span></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+
+        {% if not chapters %}
+        {% for point in key_points %}
+        <div class="point-card">
+            <span class="point-num">0{{ loop.index }}</span>
+            <h3 class="point-title">{{ point.title }}</h3>
+            <p class="point-content">
+                {{ point.content }}
+                {% if point.highlight %}
+                <span class="highlight-text">{{ point.highlight }}</span>
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% for quote in quotes %}
+        <div class="quote-box">
+            <p class="quote-text">{{ quote.text }}</p>
+            <span class="quote-source">&#8212; {{ quote.speaker }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        <span class="source">
+            {{ source_info.podcast_name or '' }} | {{ source_info.episode_title or '' }}
+        </span>
+        <span class="page-indicator">{{ page_num }} / ?</span>
+    </div>
+</body>
+</html>

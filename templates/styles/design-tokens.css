@@ -1,0 +1,283 @@
+/* ============================================
+   播客笔记项目 — 设计 Token 系统
+   Design Token System for Podcast Notes
+   ============================================ */
+
+/* ------------------------------------------
+   Primitive Tokens — 原始值
+   ------------------------------------------ */
+:root {
+  /* 中性色阶 */
+  --p-white: #ffffff;
+  --p-gray-50: #fafafa;
+  --p-gray-100: #f5f5f5;
+  --p-gray-200: #e5e5e5;
+  --p-gray-300: #d4d4d4;
+  --p-gray-400: #a3a3a3;
+  --p-gray-500: #737373;
+  --p-gray-600: #525252;
+  --p-gray-700: #404040;
+  --p-gray-800: #262626;
+  --p-gray-900: #171717;
+  --p-black: #0a0a0a;
+
+  /* 字体族 */
+  --p-font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --p-font-serif: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --p-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* 字号 */
+  --p-text-xs: 12px;
+  --p-text-sm: 14px;
+  --p-text-base: 16px;
+  --p-text-lg: 18px;
+  --p-text-xl: 20px;
+  --p-text-2xl: 24px;
+  --p-text-3xl: 30px;
+  --p-text-4xl: 36px;
+  --p-text-5xl: 48px;
+  --p-text-6xl: 60px;
+
+  /* 字重 */
+  --p-weight-light: 300;
+  --p-weight-normal: 400;
+  --p-weight-medium: 500;
+  --p-weight-semibold: 600;
+  --p-weight-bold: 700;
+  --p-weight-black: 900;
+
+  /* 行高 */
+  --p-leading-tight: 1.25;
+  --p-leading-snug: 1.375;
+  --p-leading-normal: 1.5;
+  --p-leading-relaxed: 1.625;
+  --p-leading-loose: 2;
+
+  /* 间距 */
+  --p-space-1: 4px;
+  --p-space-2: 8px;
+  --p-space-3: 12px;
+  --p-space-4: 16px;
+  --p-space-5: 20px;
+  --p-space-6: 24px;
+  --p-space-8: 32px;
+  --p-space-10: 40px;
+  --p-space-12: 48px;
+  --p-space-16: 64px;
+  --p-space-20: 80px;
+  --p-space-24: 96px;
+
+  /* 圆角 */
+  --p-radius-sm: 4px;
+  --p-radius-md: 8px;
+  --p-radius-lg: 12px;
+  --p-radius-xl: 16px;
+  --p-radius-2xl: 20px;
+  --p-radius-full: 9999px;
+
+  /* 阴影 */
+  --p-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --p-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --p-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+  --p-shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.03);
+
+  /* 动画 */
+  --p-duration-fast: 150ms;
+  --p-duration-normal: 250ms;
+  --p-duration-slow: 400ms;
+  --p-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --p-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ------------------------------------------
+   Semantic Tokens — 语义层
+   ------------------------------------------ */
+
+/* 风格 A: 极简知识感 (Minimal Knowledge) */
+[data-theme="minimal"] {
+  /* 主色 */
+  --s-primary: #1e293b;
+  --s-primary-light: #334155;
+  --s-primary-dark: #0f172a;
+
+  /* 辅助色 */
+  --s-secondary: #475569;
+  --s-accent: #d97706;
+  --s-accent-light: #f59e0b;
+
+  /* 背景 */
+  --s-bg: #fafaf9;
+  --s-bg-elevated: #ffffff;
+  --s-bg-subtle: #f5f5f4;
+
+  /* 文字 */
+  --s-text-primary: #1c1917;
+  --s-text-secondary: #57534e;
+  --s-text-tertiary: #a8a29e;
+  --s-text-inverse: #fafaf9;
+
+  /* 边框 */
+  --s-border: #e7e5e4;
+  --s-border-subtle: #f5f5f4;
+
+  /* 高亮 */
+  --s-highlight: #fef3c7;
+  --s-highlight-text: #92400e;
+
+  /* 状态 */
+  --s-success: #15803d;
+  --s-warning: #b45309;
+  --s-error: #b91c1c;
+  --s-info: #2563eb;
+}
+
+/* 风格 B: 活力社交感 (Vibrant Social) */
+[data-theme="vibrant"] {
+  --s-primary: #ec4899;
+  --s-primary-light: #f472b6;
+  --s-primary-dark: #db2777;
+
+  --s-secondary: #8b5cf6;
+  --s-accent: #f59e0b;
+  --s-accent-light: #fbbf24;
+
+  --s-bg: #fff1f2;
+  --s-bg-elevated: #ffffff;
+  --s-bg-subtle: #ffe4e6;
+
+  --s-text-primary: #881337;
+  --s-text-secondary: #be185d;
+  --s-text-tertiary: #f472b6;
+  --s-text-inverse: #fff1f2;
+
+  --s-border: #fecdd3;
+  --s-border-subtle: #ffe4e6;
+
+  --s-highlight: #fef08a;
+  --s-highlight-text: #a16207;
+
+  --s-success: #22c55e;
+  --s-warning: #f59e0b;
+  --s-error: #ef4444;
+  --s-info: #3b82f6;
+}
+
+/* 风格 C: 高级杂志感 (Editorial Magazine) */
+[data-theme="editorial"] {
+  --s-primary: #0f172a;
+  --s-primary-light: #1e293b;
+  --s-primary-dark: #020617;
+
+  --s-secondary: #64748b;
+  --s-accent: #dc2626;
+  --s-accent-light: #ef4444;
+
+  --s-bg: #f8fafc;
+  --s-bg-elevated: #ffffff;
+  --s-bg-subtle: #f1f5f9;
+
+  --s-text-primary: #0f172a;
+  --s-text-secondary: #475569;
+  --s-text-tertiary: #94a3b8;
+  --s-text-inverse: #f8fafc;
+
+  --s-border: #e2e8f0;
+  --s-border-subtle: #f1f5f9;
+
+  --s-highlight: #fee2e2;
+  --s-highlight-text: #991b1b;
+
+  --s-success: #166534;
+  --s-warning: #a16207;
+  --s-error: #991b1b;
+  --s-info: #1e40af;
+}
+
+/* ------------------------------------------
+   Component Tokens — 组件层
+   ------------------------------------------ */
+[data-theme="minimal"] {
+  /* 卡片 */
+  --c-card-bg: var(--s-bg-elevated);
+  --c-card-border: var(--s-border);
+  --c-card-radius: var(--p-radius-xl);
+  --c-card-shadow: var(--p-shadow-sm);
+  --c-card-padding: var(--p-space-6);
+
+  /* 按钮 */
+  --c-btn-primary-bg: var(--s-primary);
+  --c-btn-primary-text: var(--s-text-inverse);
+  --c-btn-primary-radius: var(--p-radius-md);
+  --c-btn-secondary-bg: transparent;
+  --c-btn-secondary-text: var(--s-primary);
+  --c-btn-secondary-border: var(--s-border);
+
+  /* 输入框 */
+  --c-input-bg: var(--s-bg-elevated);
+  --c-input-border: var(--s-border);
+  --c-input-focus-border: var(--s-primary);
+  --c-input-radius: var(--p-radius-md);
+
+  /* 标签 */
+  --c-tag-bg: var(--s-bg-subtle);
+  --c-tag-text: var(--s-text-secondary);
+  --c-tag-radius: var(--p-radius-full);
+
+  /* 引用块 */
+  --c-quote-border: var(--s-accent);
+  --c-quote-bg: var(--s-bg-subtle);
+}
+
+[data-theme="vibrant"] {
+  --c-card-bg: var(--s-bg-elevated);
+  --c-card-border: var(--s-border);
+  --c-card-radius: var(--p-radius-2xl);
+  --c-card-shadow: var(--p-shadow-md);
+  --c-card-padding: var(--p-space-5);
+
+  --c-btn-primary-bg: linear-gradient(135deg, var(--s-primary) 0%, var(--s-secondary) 100%);
+  --c-btn-primary-text: var(--s-text-inverse);
+  --c-btn-primary-radius: var(--p-radius-full);
+  --c-btn-secondary-bg: var(--s-bg-subtle);
+  --c-btn-secondary-text: var(--s-primary);
+  --c-btn-secondary-border: none;
+
+  --c-input-bg: var(--s-bg-elevated);
+  --c-input-border: var(--s-border);
+  --c-input-focus-border: var(--s-primary);
+  --c-input-radius: var(--p-radius-lg);
+
+  --c-tag-bg: var(--s-primary-light);
+  --c-tag-text: var(--s-text-inverse);
+  --c-tag-radius: var(--p-radius-full);
+
+  --c-quote-border: var(--s-accent);
+  --c-quote-bg: linear-gradient(135deg, var(--s-bg-subtle) 0%, var(--s-bg) 100%);
+}
+
+[data-theme="editorial"] {
+  --c-card-bg: var(--s-bg-elevated);
+  --c-card-border: var(--s-border);
+  --c-card-radius: 0;
+  --c-card-shadow: none;
+  --c-card-padding: var(--p-space-8);
+
+  --c-btn-primary-bg: var(--s-primary);
+  --c-btn-primary-text: var(--s-text-inverse);
+  --c-btn-primary-radius: 0;
+  --c-btn-secondary-bg: transparent;
+  --c-btn-secondary-text: var(--s-primary);
+  --c-btn-secondary-border: 2px solid var(--s-primary);
+
+  --c-input-bg: var(--s-bg);
+  --c-input-border: var(--s-border);
+  --c-input-focus-border: var(--s-accent);
+  --c-input-radius: 0;
+
+  --c-tag-bg: var(--s-primary);
+  --c-tag-text: var(--s-text-inverse);
+  --c-tag-radius: 0;
+
+  --c-quote-border: var(--s-accent);
+  --c-quote-bg: var(--s-bg-subtle);
+}

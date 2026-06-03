@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            width: {{ page_width }}px;
+            height: {{ page_height }}px;
+            background: {{ colors.bg }};
+            display: flex;
+            flex-direction: column;
+            padding: 50px 55px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 顶部装饰条 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, {{ colors.primary }} 0%, {{ colors.accent }} 100%);
+        }
+        
+        /* 页眉 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+        
+        .page-num {
+            font-size: 48px;
+            font-weight: 900;
+            color: {{ colors.primary }};
+            opacity: 0.15;
+            line-height: 1;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: {{ colors.primary }};
+            letter-spacing: 1px;
+        }
+        
+        /* 内容区域 */
+        .body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            overflow: hidden;
+        }
+        
+        /* 要点卡片 */
+        .point-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            border-left: 4px solid {{ colors.accent }};
+        }
+        
+        .point-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        .point-icon {
+            font-size: 22px;
+        }
+        
+        .point-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: {{ colors.primary }};
+            line-height: 1.4;
+        }
+        
+        .point-content {
+            font-size: 18px;
+            color: {{ colors.text }};
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        
+        /* 重点高亮 */
+        .highlight-text {
+            background: linear-gradient(120deg, {{ colors.highlight_bg }} 0%, {{ colors.highlight_bg }} 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 45%;
+            background-position: 0 88%;
+            padding: 0 4px;
+            font-weight: 500;
+        }
+        
+        /* 类比说明 */
+        .analogy {
+            font-size: 16px;
+            color: {{ colors.light_text }};
+            line-height: 1.6;
+            padding: 10px 14px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 8px;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        
+        .analogy::before {
+            content: "💡 ";
+            font-style: normal;
+        }
+        
+        /* 金句区域 */
+        .quote-box {
+            background: linear-gradient(135deg, {{ colors.primary }} 0%, {{ colors.secondary }} 100%);
+            border-radius: 16px;
+            padding: 24px 28px;
+            color: #ffffff;
+            position: relative;
+            margin-top: 10px;
+        }
+        
+        .quote-text {
+            font-size: 20px;
+            font-weight: 500;
+            line-height: 1.6;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .quote-text::before {
+            content: """;
+            position: absolute;
+            left: 0;
+            top: -5px;
+            font-size: 40px;
+            color: rgba(255,255,255,0.3);
+            font-family: Georgia, serif;
+        }
+        
+        .quote-source {
+            display: block;
+            text-align: right;
+            font-size: 15px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 10px;
+        }
+        
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .source {
+            font-size: 14px;
+            color: {{ colors.light_text }};
+        }
+        
+        .source-icon {
+            margin-right: 4px;
+        }
+        
+        .page-indicator {
+            font-size: 14px;
+            color: {{ colors.light_text }};
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"></div>
+    
+    <div class="header">
+        <span class="section-title">{{ section_title }}</span>
+        <span class="page-num">{{ "%02d"|format(page_num) }}</span>
+    </div>
+    
+    <div class="body">
+        {% for point in key_points %}
+        <div class="point-card">
+            <div class="point-header">
+                <span class="point-icon">💡</span>
+                <h3 class="point-title">{{ point.title }}</h3>
+            </div>
+            <p class="point-content">
+                {{ point.content }}
+                {% if point.highlight %}
+                <span class="highlight-text">{{ point.highlight }}</span>
+                {% endif %}
+            </p>
+            {% if point.analogy %}
+            <div class="analogy">{{ point.analogy }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        {% for quote in quotes %}
+        <div class="quote-box">
+            <p class="quote-text">{{ quote.text }}</p>
+            <span class="quote-source">— {{ quote.speaker }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="footer">
+        <span class="source">
+            <span class="source-icon">🎙️</span>
+            {{ source_info.podcast_name or '' }} | {{ source_info.episode_title or '' }}
+        </span>
+        <span class="page-indicator">{{ page_num }} / ?</span>
+    </div>
+</body>
+</html>

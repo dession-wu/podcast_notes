@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'NotoSansSC';
+            src: local('Noto Sans SC'), local('PingFang SC'), local('Microsoft YaHei'), local('SimHei'), sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'NotoSansSC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            width: 900px;
+            height: 1200px;
+            background: #fafaf9;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            color: #1c1917;
+        }
+        /* 背景装饰 */
+        .bg-pattern {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(217, 119, 6, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(217, 119, 6, 0.03) 0%, transparent 40%);
+            pointer-events: none;
+        }
+        .bg-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+        /* 装饰线条 */
+        .deco-line-top {
+            position: absolute;
+            top: 60px;
+            left: 60px;
+            width: 100px;
+            height: 2px;
+            background: #d97706;
+        }
+        .deco-line-bottom {
+            position: absolute;
+            bottom: 100px;
+            right: 60px;
+            width: 60px;
+            height: 2px;
+            background: #e7e5e4;
+        }
+        .deco-dot {
+            position: absolute;
+            top: 56px;
+            left: 168px;
+            width: 10px;
+            height: 10px;
+            background: #d97706;
+            border-radius: 50%;
+        }
+        .deco-circle {
+            position: absolute;
+            bottom: 180px;
+            left: 50px;
+            width: 120px;
+            height: 120px;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 50%;
+        }
+        .deco-circle-sm {
+            position: absolute;
+            top: 200px;
+            right: 80px;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(0,0,0,0.04);
+            border-radius: 50%;
+        }
+        /* 内容区域 */
+        .content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 80px 100px;
+            max-width: 780px;
+        }
+        .badge {
+            display: inline-block;
+            color: #a8a29e;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 6px;
+            margin-bottom: 48px;
+            text-transform: uppercase;
+            padding: 8px 20px;
+            border: 1px solid #e7e5e4;
+            border-radius: 4px;
+        }
+        .title {
+            color: #1c1917;
+            font-size: 56px;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 32px;
+            letter-spacing: -1px;
+        }
+        .subtitle {
+            color: #57534e;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.6;
+            margin-bottom: 48px;
+        }
+        .divider {
+            width: 48px;
+            height: 3px;
+            background: #d97706;
+            margin: 0 auto 32px;
+        }
+        .meta {
+            color: #a8a29e;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+        .meta strong {
+            color: #57534e;
+            font-weight: 600;
+        }
+        /* 底部 */
+        .footer {
+            position: absolute;
+            bottom: 48px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #d6d3d1;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="bg-grid"></div>
+    <div class="deco-line-top"></div>
+    <div class="deco-dot"></div>
+    <div class="deco-line-bottom"></div>
+    <div class="deco-circle"></div>
+    <div class="deco-circle-sm"></div>
+
+    <div class="content">
+        <div class="badge">播 客 笔 记</div>
+        <h1 class="title">{{ title }}</h1>
+        <p class="subtitle">{{ podcast_name }} | {{ episode_title }}</p>
+        <div class="divider"></div>
+        {% if guests %}
+        <p class="meta">嘉宾：<strong>{{ guests }}</strong></p>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        内容提炼自播客《{{ podcast_name }}》
+    </div>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            width: {{ page_width }}px;
+            height: {{ page_height }}px;
+            background: {{ colors.bg }};
+            display: flex;
+            flex-direction: column;
+            padding: 40px 45px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 顶部装饰条 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, {{ colors.primary }} 0%, {{ colors.accent }} 100%);
+        }
+        
+        /* 页眉 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            flex-shrink: 0;
+        }
+        
+        .page-num {
+            font-size: 42px;
+            font-weight: 900;
+            color: {{ colors.primary }};
+            opacity: 0.12;
+            line-height: 1;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: {{ colors.primary }};
+            letter-spacing: 1px;
+        }
+        
+        /* 内容区域 - 连续文本流 */
+        .body {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 章节标题 */
+        .chapter-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: {{ colors.primary }};
+            line-height: 1.3;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid {{ colors.accent }};
+        }
+        
+        /* 子话题 */
+        .subsection {
+            margin-bottom: 14px;
+        }
+        
+        .subsection:last-child {
+            margin-bottom: 0;
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            font-weight: 700;
+            color: {{ colors.text }};
+            line-height: 1.4;
+            margin-bottom: 6px;
+            padding-left: 10px;
+            border-left: 3px solid {{ colors.accent }};
+        }
+        
+        /* 论述列表 */
+        .point-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .point-list li {
+            font-size: 17px;
+            color: {{ colors.text }};
+            line-height: 1.55;
+            margin-bottom: 5px;
+            padding-left: 18px;
+            position: relative;
+        }
+        
+        .point-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: {{ colors.accent }};
+            font-weight: 700;
+        }
+        
+        /* 阴影标注 - 核心高亮 */
+        .highlight-text {
+            background: linear-gradient(120deg, {{ colors.highlight_bg }} 0%, {{ colors.highlight_bg }} 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 45%;
+            background-position: 0 88%;
+            padding: 0 3px;
+            font-weight: 600;
+        }
+        
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .source {
+            font-size: 13px;
+            color: {{ colors.light_text }};
+        }
+        
+        .source-icon {
+            margin-right: 4px;
+        }
+        
+        .page-indicator {
+            font-size: 13px;
+            color: {{ colors.light_text }};
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"></div>
+    
+    <div class="header">
+        <span class="section-title">{{ section_title }}</span>
+        <span class="page-num">{{ "%02d"|format(page_num) }}</span>
+    </div>
+    
+    <div class="body">
+        {% if chapter_title %}
+        <h1 class="chapter-title">{{ chapter_title }}</h1>
+        {% endif %}
+        
+        {% for subsection in subsections %}
+        <div class="subsection">
+            <h2 class="subtitle">{{ subsection.subtitle }}</h2>
+            <ul class="point-list">
+                {% for point in subsection.points %}
+                <li>
+                    {% if point.highlight %}
+                        {{ point.text.replace(point.highlight, '<span class="highlight-text">' + point.highlight + '</span>')|safe }}
+                    {% else %}
+                        {{ point.text }}
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="footer">
+        <span class="source">
+            <span class="source-icon">🎙️</span>
+            {{ source_info.podcast_name or '' }} | {{ source_info.episode_title or '' }}
+        </span>
+        <span class="page-indicator">{{ page_num }} / {{ total_pages }}</span>
+    </div>
+</body>
+</html>

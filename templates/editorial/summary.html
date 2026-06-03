@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'NotoSerifSC';
+            src: local('Noto Serif SC'), local('Songti SC'), local('SimSun'), Georgia, serif;
+        }
+        @font-face {
+            font-family: 'NotoSansSC';
+            src: local('Noto Sans SC'), local('PingFang SC'), local('Microsoft YaHei'), sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'NotoSerifSC', 'Songti SC', Georgia, serif;
+            width: 900px;
+            height: 1200px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            padding: 56px 64px;
+            position: relative;
+            overflow: hidden;
+            color: #0f172a;
+        }
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: #0f172a;
+        }
+        .bg-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+        /* 标题区域 — 对齐优化 */
+        .header {
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 3px solid #0f172a;
+        }
+        .header-label {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 6px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        .header-title {
+            font-size: 36px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 1px;
+            line-height: 1.2;
+        }
+        /* 要点列表 — 编号风格，间距优化 */
+        .checklist {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-bottom: 32px;
+            overflow: hidden;
+        }
+        .check-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 18px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .check-item:first-child {
+            padding-top: 8px;
+        }
+        .check-num {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            color: #dc2626;
+            opacity: 0.4;
+            line-height: 1;
+            min-width: 36px;
+            text-align: center;
+            padding-top: 2px;
+        }
+        .check-text {
+            font-size: 17px;
+            color: #475569;
+            line-height: 1.6;
+            font-weight: 600;
+            flex: 1;
+        }
+        /* 总结感悟 — 适配长内容 */
+        .conclusion {
+            background: #0f172a;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+            position: relative;
+        }
+        .conclusion-label {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        .conclusion-text {
+            font-size: 15px;
+            color: #f8fafc;
+            line-height: 1.7;
+            font-style: italic;
+        }
+        /* 来源信息 — 对齐优化 */
+        .source-box {
+            border: 3px solid #0f172a;
+            padding: 24px 28px;
+            position: relative;
+            background: #ffffff;
+        }
+        .source-box::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 28px;
+            width: 48px;
+            height: 16px;
+            background: #dc2626;
+        }
+        .source-title {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        .source-item {
+            font-family: 'NotoSansSC', sans-serif;
+            font-size: 14px;
+            color: #475569;
+            line-height: 1.6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .source-item strong {
+            color: #0f172a;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"></div>
+    <div class="bg-grid"></div>
+
+    <div class="header">
+        <div class="header-label">Summary</div>
+        <h2 class="header-title">核心要点复盘</h2>
+    </div>
+
+    <div class="checklist">
+        {% for point in key_points %}
+        <div class="check-item">
+            <span class="check-num">0{{ loop.index }}</span>
+            <span class="check-text">{{ point.title }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if conclusion %}
+    <div class="conclusion">
+        <div class="conclusion-label">Reflection</div>
+        <p class="conclusion-text">{{ conclusion }}</p>
+    </div>
+    {% endif %}
+
+    <div class="source-box">
+        <div class="source-title">Source</div>
+        <div class="source-item">
+            <span>播客：</span><strong>{{ source_info.podcast_name or '未知播客' }}</strong>
+        </div>
+        <div class="source-item">
+            <span>期数：</span><strong>{{ source_info.episode_title or '' }}</strong>
+        </div>
+        {% if source_info.guests %}
+        <div class="source-item">
+            <span>嘉宾：</span><strong>{{ source_info.guests }}</strong>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

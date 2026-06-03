@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Landing Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* 自定义流体光圈背景动画 */
+        .fluid-glow-container {
+            position: absolute;
+            top: -20%;
+            left: -20%;
+            width: 80%;
+            height: 140%;
+            background: radial-gradient(circle at 40% 50%, rgba(173, 216, 230, 0.8) 0%, rgba(70, 130, 180, 0.3) 30%, transparent 60%);
+            filter: url(#fluid-distortion) blur(60px);
+            opacity: 0.85;
+            mix-blend-mode: screen;
+            animation: pulseGlow 8s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+
+        /* 呼吸和轻微位移动画 */
+        @keyframes pulseGlow {
+            0% {
+                transform: scale(1) translate(0px, 0px) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.05) translate(20px, -10px) rotate(5deg);
+            }
+            100% {
+                transform: scale(0.95) translate(-10px, 20px) rotate(-5deg);
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#050507] text-gray-200 font-sans min-h-screen flex items-center justify-center overflow-hidden relative">
+
+    <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="fluid-glow-container"></div>
+    </div>
+
+    <svg xmlns="http://www.w3.org/2000/svg" class="hidden">
+        <defs>
+            <filter id="fluid-distortion">
+                <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" result="noise">
+                    <animate attributeName="baseFrequency" dur="15s" values="0.015; 0.022; 0.015" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="120" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+
+
+    <div class="absolute top-6 right-8 flex items-center space-x-4 text-xs text-gray-500 z-10">
+        <span>VER. 01</span>
+        <button class="flex items-center space-x-1 border border-gray-800 rounded-full px-3 py-1 bg-black/30 hover:bg-black/50 transition">
+            <i class="fa-regular fa-moon"></i>
+            <span>DARK</span>
+        </button>
+    </div>
+
+
+    <main class="w-full max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 items-center z-10 relative">
+        
+        <div class="hidden md:block">
+            </div>
+
+        <div class="flex justify-center md:justify-end">
+            <div class="w-full max-w-[400px] bg-[#0c0c0e]/80 border border-gray-900 rounded-3xl p-8 backdrop-blur-xl shadow-2xl">
+                
+                <div class="mb-6">
+                    <span class="text-[10px] uppercase tracking-widest text-gray-500 font-semibold px-2 py-0.5 bg-gray-900 rounded-md">User Identity</span>
+                    <h1 class="text-2xl font-semibold text-white mt-3">Authenticate</h1>
+                    <p class="text-xs text-gray-400 mt-1">Secure bio-metric or credential access.</p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    <button class="flex items-center justify-center py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition text-lg text-white">
+                        <i class="fa-brands fa-apple"></i>
+                    </button>
+                    <button class="flex items-center justify-center py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition text-lg text-white">
+                        <i class="fa-brands fa-google"></i>
+                    </button>
+                    <button class="flex items-center justify-center py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition text-lg text-white">
+                        <i class="fa-brands fa-github"></i>
+                    </button>
+                </div>
+
+                <div class="relative flex py-2 items-center mb-4">
+                    <div class="flex-grow border-t border-gray-800/60"></div>
+                    <span class="flex-shrink mx-4 text-[10px] text-gray-600 tracking-wider uppercase">Or Smart Account</span>
+                    <div class="flex-grow border-t border-gray-800/60"></div>
+                </div>
+
+                <form class="space-y-4" onsubmit="event.preventDefault();">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 font-medium">Identifier</label>
+                        <input type="email" placeholder="user@domain.net" 
+                               class="w-full bg-[#141416] border border-gray-800 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-gray-700 transition" />
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 font-medium">Passcode</label>
+                        <input type="password" placeholder="••••••••••••" 
+                               class="w-full bg-[#141416] border border-gray-800 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-gray-700 transition" />
+                    </div>
+
+                    <button type="submit" class="w-full mt-6 bg-white hover:bg-gray-100 text-black font-semibold text-xs uppercase tracking-wider py-3.5 rounded-full flex items-center justify-center space-x-2 transition cursor-pointer active:scale-[0.98]">
+                        <span>Initialize Uplink</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    </main>
+
+    <div class="absolute bottom-6 left-8 text-[9px] text-gray-700 tracking-widest font-mono hidden md:block">
+        UPLINK_ESTABLISHED_
+    </div>
+
+</body>
+</html>

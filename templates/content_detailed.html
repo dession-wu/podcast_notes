@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            width: {{ page_width }}px;
+            height: {{ page_height }}px;
+            background: {{ colors.bg }};
+            display: flex;
+            flex-direction: column;
+            padding: 28px 34px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 顶部装饰条 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, {{ colors.primary }} 0%, {{ colors.accent }} 100%);
+        }
+        
+        /* 页眉 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            flex-shrink: 0;
+        }
+        
+        .stage-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: {{ colors.accent }};
+            background: {{ colors.highlight_bg }};
+            padding: 2px 9px;
+            border-radius: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .page-num {
+            font-size: 36px;
+            font-weight: 900;
+            color: {{ colors.primary }};
+            opacity: 0.12;
+            line-height: 1;
+        }
+        
+        /* 阶段标题 */
+        .stage-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: {{ colors.primary }};
+            line-height: 1.25;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        
+        .time-range {
+            font-size: 13px;
+            color: {{ colors.light_text }};
+            margin-bottom: 10px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        
+        /* 内容区域 - 弹性容器 */
+        .body {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+        
+        /* 子话题块 - 弹性均分 */
+        .topic-block {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .topic-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: {{ colors.text }};
+            line-height: 1.35;
+            margin-bottom: 6px;
+            padding-left: 8px;
+            border-left: 3px solid {{ colors.accent }};
+            flex-shrink: 0;
+        }
+        
+        /* 论述列表 - 填充剩余空间 */
+        .points-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        /* 论述项 - 弹性自适应 */
+        .point-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            line-height: 1.5;
+            flex: 1 1 0;
+            min-height: 0;
+        }
+        
+        /* 标签颜色系统 */
+        .tag {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 0px 5px;
+            border-radius: 3px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-top: 1px;
+            letter-spacing: 0.5px;
+        }
+        
+        .tag-pain { color: #c53030; background: rgba(229, 62, 62, 0.08); }
+        .tag-decision { color: #2b6cb0; background: rgba(49, 130, 206, 0.08); }
+        .tag-action { color: #234e52; background: rgba(49, 151, 149, 0.08); }
+        .tag-result { color: #276749; background: rgba(56, 161, 105, 0.08); }
+        .tag-data { color: #c05621; background: rgba(221, 107, 32, 0.08); }
+        .tag-case { color: #6b46c1; background: rgba(128, 90, 213, 0.08); }
+        .tag-person { color: #b83280; background: rgba(213, 63, 140, 0.08); }
+        .tag-default { color: {{ colors.primary }}; background: rgba(26, 54, 93, 0.06); }
+        
+        .point-text {
+            font-size: 14px;
+            color: {{ colors.text }};
+            line-height: 1.5;
+            flex: 1;
+        }
+        
+        /* 阴影标注 */
+        .highlight-text {
+            background: linear-gradient(120deg, {{ colors.highlight_bg }} 0%, {{ colors.highlight_bg }} 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 40%;
+            background-position: 0 88%;
+            padding: 0 2px;
+            font-weight: 600;
+        }
+        
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 7px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .source {
+            font-size: 11px;
+            color: {{ colors.light_text }};
+        }
+        
+        .page-indicator {
+            font-size: 11px;
+            color: {{ colors.light_text }};
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"></div>
+    
+    <div class="header">
+        <span class="stage-label">阶段 {{ stage_num }}</span>
+        <span class="page-num">{{ "%02d"|format(page_num) }}</span>
+    </div>
+    
+    <h1 class="stage-title">{{ stage_title }}</h1>
+    {% if time_range %}
+    <p class="time-range">📅 {{ time_range }}</p>
+    {% endif %}
+    
+    <div class="body">
+        {% for topic in topics %}
+        <div class="topic-block">
+            <h2 class="topic-title">{{ topic.topic_title }}</h2>
+            <div class="points-list">
+                {% for point in topic.points %}
+                {% set tag_class = "tag-" + (point.tag|replace("【", "")|replace("】", "")|lower) if point.tag in ["【痛点】", "【决策】", "【行动】", "【结果】", "【数据】", "【案例】", "【人物】"] else "default" %}
+                <div class="point-item">
+                    <span class="tag tag-{{ tag_class }}">{{ point.tag }}</span>
+                    <span class="point-text">
+                        {% if point.highlight and point.highlight in point.text %}
+                            {{ point.text.replace(point.highlight, '<span class="highlight-text">' + point.highlight + '</span>')|safe }}
+                        {% else %}
+                            {{ point.text }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="footer">
+        <span class="source">
+            <span>🎙️</span>
+            {{ source_info.podcast_name or '' }} | {{ source_info.episode_title or '' }}
+        </span>
+        <span class="page-indicator">{{ page_num }} / {{ total_pages }}</span>
+    </div>
+</body>
+</html>

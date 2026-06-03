@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            width: 900px;
+            height: 1200px;
+            background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+            display: flex;
+            flex-direction: column;
+            padding: 50px 55px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 装饰元素 */
+        .deco-circle-1 {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            top: -80px;
+            right: -80px;
+        }
+        
+        .deco-circle-2 {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            bottom: -60px;
+            left: -60px;
+        }
+        
+        .deco-line {
+            position: absolute;
+            width: 80px;
+            height: 3px;
+            background: #ed8936;
+            top: 60px;
+            left: 55px;
+            border-radius: 2px;
+        }
+        
+        /* 标题区域 */
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+            position: relative;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+        
+        .header-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+        
+        .header-title {
+            font-size: 32px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 2px;
+        }
+        
+        .header-subtitle {
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 8px;
+        }
+        
+        /* 金句列表 */
+        .quotes-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .quote-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px 28px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        
+        .quote-mark {
+            font-size: 48px;
+            color: #ed8936;
+            opacity: 0.6;
+            line-height: 1;
+            margin-bottom: 8px;
+            font-family: Georgia, serif;
+        }
+        
+        .quote-text {
+            font-size: 20px;
+            color: #ffffff;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+        
+        /* 页脚 */
+        .footer {
+            margin-top: auto;
+            padding-top: 20px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .page-indicator {
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="deco-circle-1"></div>
+    <div class="deco-circle-2"></div>
+    <div class="deco-line"></div>
+    
+    <div class="header">
+        <div class="header-icon">💭</div>
+        <h1 class="header-title">思考</h1>
+        <p class="header-subtitle">核心认知与商业思维</p>
+    </div>
+    
+    <div class="quotes-list">
+        
+        <div class="quote-card">
+            <div class="quote-mark">"</div>
+            <p class="quote-text">商业思维的本质是'反直觉的常识'</p>
+        </div>
+        
+        <div class="quote-card">
+            <div class="quote-mark">"</div>
+            <p class="quote-text">真正的商业成功，始于解决一个具体的'麻烦'</p>
+        </div>
+        
+    </div>
+    
+    <div class="footer">
+        <p class="footer-text">🎙️ 内容提炼自播客《商业就是这样》</p>
+        <p class="page-indicator">5 / 6</p>
+    </div>
+</body>
+</html>
