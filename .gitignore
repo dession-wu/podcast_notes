@@ -78,3 +78,8 @@ coverage/
 *.tmp
 *.bak
 *.swp
+
+# External tools (binaries, downloaded tools)
+tools/*/bin/
+tools/*.exe
+tools/*.zip
