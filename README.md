@@ -14,8 +14,9 @@
 ---
 
 ## 这是什么
-<img width="400" height="300" alt="Podcast notes demo" src="https://github.com/user-attachments/assets/1a6cfc59-47a2-4d15-9ccc-83b769a21cda" />
 
+
+https://github.com/user-attachments/assets/3e4602d0-8a19-4ee8-a678-773b6c3d26c7
 
 
 **播客笔记**是一款把"听完就忘"的播客变成"可检索、可下载、可二次创作"的知识资产的工具。你上传一段音频，它会自动完成：转写 → 内容理解 → 笔记生成 → 图文渲染。
