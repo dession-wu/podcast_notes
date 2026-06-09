@@ -33,14 +33,7 @@ https://github.com/user-attachments/assets/3e4602d0-8a19-4ee8-a678-773b6c3d26c7
 **播客笔记**把这些事从"几小时"压缩到"几分钟"。
 
 ### 效果演示
-
-<p align="center">
-  <video src="https://github.com/dession-wu/podcast_notes/raw/main/assets/demo.mp4" controls width="100%" preload="metadata" style="max-width: 800px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);"></video>
-</p>
-
-<p align="center">
-  <sub>如果视频无法直接播放，<a href="https://github.com/dession-wu/podcast_notes/raw/main/assets/demo.mp4">点击下载观看</a></sub>
-</p>
+<img width="677" height="1698" alt="image" src="https://github.com/user-attachments/assets/b37e31c1-709f-4be3-9ac7-8099702484b1" />
 
 ---
 
