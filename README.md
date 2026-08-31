@@ -113,6 +113,8 @@ https://github.com/user-attachments/assets/3e4602d0-8a19-4ee8-a678-773b6c3d26c7
 
 ### 方式 A：Docker Compose（推荐）
 
+> 后端（FastAPI + Playwright 渲染）与前端（Next.js 静态导出 + Nginx）双容器编排，前端容器通过 Nginx 将 `/api` 同源反代到后端，无需处理跨域。
+
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/dession-wu/podcast_notes.git
@@ -120,16 +122,26 @@ cd podcast_notes
 
 # 2. 准备环境变量
 cp .env.example .env
-# 编辑 .env，至少填入一个 LLM 的 API Key
+# 编辑 .env：
+#   - 必填 PODCAST_NOTES_API_KEY（统一 API 鉴权密钥，前后端一致）
+#   - 至少填入一个 LLM 的 API Key
 
-# 3. 启动
-docker compose up -d
+# 3. 启动（首次构建需下载 Chromium 等依赖，耗时较长）
+docker compose up -d --build
 
 # 4. 打开浏览器
-# 前端：http://localhost:3000
-# 后端：http://localhost:8000
-# API 文档：http://localhost:8000/docs
+# Web 控制台：http://localhost:8083
+# 后端 API 经 Nginx 同源反代：http://localhost:8083/api/...
+# 健康检查：http://localhost:8083/api/health/
 ```
+
+**服务地址速查**：
+
+| 服务 | 地址 | 说明 |
+|-----|------|------|
+| Web 控制台 | http://localhost:8083 | 前端页面 + 同源 `/api`、`/images` 反代 |
+| 后端 API | http://localhost:8083/api | 仅容器网络内 8000 端口，不直接对外 |
+| 健康检查 | http://localhost:8083/api/health/ | 无需 API Key |
 
 ### 方式 B：本地裸机运行
 
@@ -145,7 +157,9 @@ pip install -e ".[whisper]"
 
 # 2. 准备环境变量
 cp .env.example .env
-# 编辑 .env，填入 API Key
+# 编辑 .env：填入 LLM API Key；
+# 本地单人使用可不设 PODCAST_NOTES_API_KEY，并设
+# PODCAST_NOTES_ALLOW_ANONYMOUS=true 允许匿名访问
 
 # 3. 启动后端（新终端 1）
 python -m backend.main
@@ -155,7 +169,7 @@ python -m backend.main
 cd web-dashboard
 npm install
 npm run dev
-# → http://localhost:3000
+# → http://localhost:3000（dev 模式直连后端 8000）
 ```
 
 ### 方式 C：CLI 脚本（无 UI）
@@ -178,6 +192,15 @@ python scripts/download_and_process.py --rss <url> --template v9
 ## 配置说明
 
 复制 `.env.example` 为 `.env`，按需填入以下配置：
+
+### 服务鉴权（容器化部署必读）
+
+| 变量 | 必填 | 说明 |
+|-----|------|------|
+| `PODCAST_NOTES_API_KEY` | Docker 部署必填 | 统一 API 鉴权密钥。后端校验 `X-API-Key` 或 `Authorization: Bearer <key>`；前端构建时通过 `NEXT_PUBLIC_API_KEY` 内联到 bundle，须与后端一致 |
+| `PODCAST_NOTES_ALLOW_ANONYMOUS` | 否 | 默认 `false`（fail-closed）。仅在未配置 API Key 的本地单人场景显式设为 `true` |
+
+> 未配置 API Key 且未允许匿名时，除健康检查外的所有业务接口返回 503 拒绝服务。
 
 ### LLM 提供商（至少填一个）
 
@@ -233,20 +256,55 @@ podcast_notes/
 │   ├── editorial/        # 高级杂志感
 │   └── styles/design-tokens.css
 ├── web-dashboard/        # Next.js 前端
+│   ├── Dockerfile        # 前端镜像（多阶段：构建静态导出 → Nginx 托管）
+│   ├── nginx/default.conf# 同源反代 /api、/images → backend:8000
 │   └── src/
-│       ├── app/dashboard/  # 搜索/创建/库/设置
-│       └── components/     # 预览/下载/校对等组件
+│       ├── app/dashboard/  # 搜索/创建/库/笔记等页面
+│       ├── components/     # 预览/下载/校对等组件
+│       └── lib/            # api 调用/模板/转录存储等公共库
 ├── scripts/              # CLI 脚本
 ├── tests/                # 测试
 ├── docs/                 # 项目文档
-│   ├── PRD.md            # 产品需求文档
 │   └── download-feature-guide.md
-├── nginx/                # 反代配置
-├── prometheus/           # 监控配置
-├── docker-compose.yml
-├── Dockerfile.backend
-└── Dockerfile.frontend
+├── Dockerfile            # 后端镜像（Python 3.10 + Playwright Chromium）
+├── docker-compose.yml    # 双容器编排（backend + frontend，宿主 8083）
+└── .env.example          # 环境变量模板
 ```
+
+---
+
+## 部署（阿里云 ECS）
+
+生产示例环境：阿里云 ECS（项目目录 `/opt/projects/podcast_notes`），服务对外端口 **8083**。
+
+```bash
+# 1. 服务器上拉取代码
+ssh <ecs>
+sudo mkdir -p /opt/projects/podcast_notes
+cd /opt/projects/podcast_notes
+git clone -b optimize/p0-fixes https://github.com/dession-wu/podcast_notes.git .
+
+# 2. 准备 .env（勿入库）
+cp .env.example .env
+vim .env
+#   PODCAST_NOTES_API_KEY=<生成一个强随机密钥>
+#   以及 LLM API Key
+
+# 3. 构建并启动（国内网络已内置 pip / apt / Playwright 镜像加速）
+docker compose up -d --build
+
+# 4. 验证
+curl -fsS http://127.0.0.1:8083/api/health/
+docker compose ps
+
+# 浏览器访问 http://<ECS公网IP>:8083（需在安全组放行 8083）
+```
+
+**运维要点**：
+
+- 数据库（SQLite）与音频/转写/生成图片均落在 `podcast_data` 卷，重建容器不丢数据
+- 后端 8000 端口仅在容器网络内暴露，不直接映射宿主机
+- 日志：`docker compose logs -f backend` / `frontend`
 
 ---
 
@@ -257,7 +315,7 @@ podcast_notes/
 - [ ] **V1.2 内容质量**：模板智能推荐 / 库内全文检索 / 批量处理 / 多 LLM 切换 UI
 - [ ] **V2.0 长期演进**：跨期主题聚合 / 个人内容画像 / RAG 检索增强
 
-明确**不做**：自动发布到平台（创作者需要终审权）、多用户 SaaS 化、付费墙。详见 [PRD §8.5](docs/PRD.md#八项目排期与优先级)。
+明确**不做**：自动发布到平台（创作者需要终审权）、多用户 SaaS 化、付费墙。
 
 ---
 
@@ -272,7 +330,7 @@ podcast_notes/
 | 模板渲染 | Jinja2 + Playwright（HTML → PNG） |
 | 数据库 | SQLite（默认）→ PostgreSQL（生产） |
 | 缓存 | Redis |
-| 部署 | Docker + Docker Compose + Nginx |
+| 部署 | Docker Compose（backend + frontend）+ Nginx 同源反代（宿主 8083） |
 | 监控 | Prometheus + Grafana |
 | 日志 | structlog（结构化 JSON 日志） |
 | 测试 | pytest（后端）+ Vitest（前端） |
@@ -281,10 +339,9 @@ podcast_notes/
 
 ## 相关文档
 
-- 📋 [产品需求文档 PRD](docs/PRD.md) — 完整的产品设计与功能规划
 - 🎨 [设计系统规范](DESIGN_SYSTEM.md) — 三层 Token 架构与三种视觉风格
 - ⬇️ [下载功能指南](docs/download-feature-guide.md) — 文档导出详细说明
-- 🏗️ [部署运维方案](.trae/documents/deployment-optimization-plan.md) — Docker + Nginx + Prometheus 生产部署
+- 🏗️ [部署运维方案](.trae/documents/deployment-optimization-plan.md) — Docker + Nginx 生产部署
 
 ---
 
@@ -292,7 +349,7 @@ podcast_notes/
 
 我们欢迎任何形式的贡献：提 Issue、提 PR、写文档、分享使用案例。
 
-请阅读 [贡献指南](.trae/documents/) 了解开发规范和提交流程。
+开发规范与提交流程见下方「本地开发」与「提交规范」小节。
 
 ### 本地开发
 
@@ -373,15 +430,15 @@ Upload an audio file and get: transcript → structured notes → visual cards r
 ```bash
 git clone https://github.com/dession-wu/podcast_notes.git
 cd podcast_notes
-cp .env.example .env   # fill in your API keys
-docker compose up -d
+cp .env.example .env   # set PODCAST_NOTES_API_KEY and one LLM API key
+docker compose up -d --build
 ```
 
 Then open:
-- Frontend: http://localhost:3000
-- Backend API docs: http://localhost:8000/docs
+- Web console: http://localhost:8083
+- Backend API (proxied by Nginx): http://localhost:8083/api
 
-For more details, see the [Chinese section above](#播客笔记--podcast-notes) and the full [PRD](docs/PRD.md).
+For more details, see the [Chinese section above](#播客笔记--podcast-notes).
 
 ---
 
