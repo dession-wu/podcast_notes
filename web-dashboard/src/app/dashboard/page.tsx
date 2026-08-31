@@ -236,7 +236,7 @@ export default function DashboardPage() {
       setDownloadTasks((prev) =>
         prev.map((task) =>
           task.task_id === taskId
-            ? { ...task, status: "processing", progress: 0, error: undefined, error_category: undefined }
+            ? { ...task, status: "processing", progress: 0, error: null, error_category: null }
             : task
         )
       );
@@ -416,7 +416,7 @@ export default function DashboardPage() {
                       {task.status === "completed" ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       ) : task.status === "failed" ? (
-                        getErrorIcon(task.error_category)
+                        getErrorIcon(task.error_category || undefined)
                       ) : (
                         <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                       )}

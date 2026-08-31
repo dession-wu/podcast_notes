@@ -119,6 +119,14 @@ class ContentProcessor:
         # 步骤 1: 文本预处理
         cleaned_text = self._preprocess_text(transcript.text)
 
+        # 输入校验：空/极短文本直接拒绝，避免 LLM 凭空幻觉生成笔记
+        effective_len = len("".join(cleaned_text.split()))
+        if effective_len < 50:
+            raise ContentProcessorError(
+                f"转写文本为空或过短（有效字符仅 {effective_len} 个），无法生成笔记。"
+                "请先完成转写或提供有效文本。"
+            )
+
         # 步骤 2: 内容理解（提取关键信息）
         key_info = self._extract_key_info(cleaned_text)
 
@@ -484,7 +492,7 @@ class ContentProcessor:
                 template_name=actual_template,
                 variables=template_vars,
                 temperature=0.7,
-                max_tokens=2000,
+                max_tokens=6000,
             )
         except LLMServiceError as e:
             logger.error(f"笔记生成失败: {e}")
@@ -496,6 +504,115 @@ class ContentProcessor:
             podcast_name=transcript.podcast_name,
             episode_title=transcript.episode_title,
             tags=key_info.get("tags", []),
+        )
+
+    def _parse_structured_note(
+        self,
+        content: str,
+        podcast_name: str | None,
+        episode_title: str,
+        tags: list[str],
+    ) -> XiaohongshuNote | None:
+        # 尝试将 LLM 输出的结构化 JSON 解析为笔记。
+        # v7/v8/v9 系列模板均要求 LLM 输出 JSON，但此前仅做纯文本解析，
+        # 导致正文为原始 JSON 围栏文本。JSON 可解析时渲染为可读正文，
+        # 失败时返回 None 交由纯文本路径兜底。
+        text = content.strip()
+        if not text:
+            return None
+
+        # 剥离 markdown 代码围栏
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+
+        json_match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not json_match:
+            return None
+        try:
+            data = json.loads(json_match.group())
+        except json.JSONDecodeError:
+            logger.debug("LLM 输出疑似 JSON 但解析失败，回退纯文本解析")
+            return None
+        if not isinstance(data, dict) or "hook_title" not in data:
+            return None
+
+        # 标题
+        title = str(data.get("hook_title", "播客笔记")).strip()[:20]
+
+        # 正文渲染
+        parts: list[str] = []
+        thinking = data.get("thinking", "")
+        if thinking:
+            parts.append(str(thinking))
+            parts.append("")
+
+        for item in data.get("key_data_summary", []) or []:
+            if isinstance(item, dict):
+                icon = item.get("icon", "📊")
+                label = item.get("label", "")
+                value = item.get("value", "")
+                if label or value:
+                    parts.append(f"{icon} {label}: {value}")
+        if parts and parts[-1] != "":
+            parts.append("")
+
+        for stage in data.get("stages", []) or []:
+            stage_title = stage.get("stage_title", "")
+            time_range = stage.get("time_range", "")
+            if stage_title:
+                line = f"## {stage_title}"
+                if time_range:
+                    line += f" [{time_range}]"
+                parts.append(line)
+            for topic in stage.get("topics", []) or []:
+                topic_title = topic.get("topic_title", "")
+                if topic_title:
+                    parts.append(f"### {topic_title}")
+                for point in topic.get("points", []) or []:
+                    if isinstance(point, dict):
+                        tag = point.get("tag", "")
+                        ptext = point.get("text", "")
+                        prefix = f"{tag} " if tag else "- "
+                        parts.append(f"{prefix}{ptext}")
+                    elif point:
+                        parts.append(f"- {point}")
+                parts.append("")
+
+        # v7/v8 系列的扁平 key_points 兼容
+        for point in data.get("key_points", []) or []:
+            if isinstance(point, dict):
+                parts.append(f"## {point.get('title', '')}")
+                if point.get("content"):
+                    parts.append(str(point["content"]))
+            elif point:
+                parts.append(f"- {point}")
+
+        reflections = data.get("reflections", []) or []
+        if reflections:
+            parts.append("💭 核心思考")
+            for r in reflections:
+                parts.append(f"- {r}")
+
+        body = "\n".join(parts).strip()
+        if not body:
+            return None
+
+        chinese_chars = sum(1 for c in body if "\u4e00" <= c <= "\u9fff")
+        english_words = len([w for w in body.split() if w.isascii()])
+        word_count = chinese_chars + english_words
+
+        final_tags = data.get("tags") or tags or ["播客笔记", "干货分享"]
+        if isinstance(final_tags, str):
+            final_tags = [final_tags]
+
+        return XiaohongshuNote(
+            title=title,
+            content=body,
+            tags=final_tags,
+            source_podcast=podcast_name,
+            source_episode=episode_title,
+            word_count=word_count,
         )
 
     def _parse_note_content(
@@ -516,6 +633,13 @@ class ContentProcessor:
         Returns:
             小红书笔记对象
         """
+        # 优先尝试结构化 JSON 解析（v7/v8/v9 模板输出 JSON）
+        structured_note = self._parse_structured_note(
+            content, podcast_name, episode_title, tags
+        )
+        if structured_note is not None:
+            return structured_note
+
         # 提取标题（第一行或 ## 标记）
         title = ""
         title_match = re.search(r"^#\s*(.+)$", content, re.MULTILINE)

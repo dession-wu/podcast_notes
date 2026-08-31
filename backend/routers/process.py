@@ -5,7 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from core.content_processor import ContentProcessor
+from backend.notes_store import get_notes_db
+from core.content_processor import ContentProcessor, ContentProcessorError
 from core.template_recommender import (
     RecommendationEngine,
     get_template_by_alias,
@@ -59,6 +60,10 @@ class ProcessResponse(BaseModel):
     note: dict
     used_template: str
     recommendation_info: RecommendationInfo | None = None
+    saved_note_id: int | None = Field(
+        default=None,
+        description="生成成功后自动保存到笔记库的 id；保存失败时为 None",
+    )
 
 
 # Template alias to full template name mapping
@@ -158,15 +163,42 @@ async def process_content(request: ProcessRequest):
             "word_count": result.word_count,
         }
 
+        # 生成成功后自动保存到笔记库（SQLite 持久化）。
+        # 入库失败只记 warning，不影响笔记生成的正常返回。
+        saved_note_id: int | None = None
+        try:
+            saved_note = get_notes_db().create_note(
+                title=note["title"],
+                content=note["content"],
+                tags=note["tags"],
+                word_count=note["word_count"],
+                template=template_alias,
+                podcast_name=request.podcast_name or "未知播客",
+                episode_title=request.episode_title or "未命名单集",
+                episode_id=None,
+                transcript_text=request.transcript_text,
+            )
+            saved_note_id = saved_note["id"]
+            logger.info("笔记已自动入库", note_id=saved_note_id)
+        except Exception as save_error:
+            logger.warning(
+                "笔记自动入库失败（不影响生成结果）", error=str(save_error)
+            )
+
         return ProcessResponse(
             success=True,
             note=note,
             used_template=template_alias,
             recommendation_info=recommendation_info,
+            saved_note_id=saved_note_id,
         )
 
     except HTTPException:
         raise
+    except ContentProcessorError as e:
+        # 输入类错误（如转写文本为空）返回 422，而非 500
+        logger.warning("Processing rejected invalid input", error=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
         logger.error("Processing failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}") from e

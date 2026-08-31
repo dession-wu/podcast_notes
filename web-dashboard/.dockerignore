@@ -1,0 +1,9 @@
+# 前端镜像构建上下文排除项（构建上下文 = web-dashboard/）
+node_modules/
+.next/
+out/
+.env
+.env.*
+*.log
+.DS_Store
+next.config.ts.bak

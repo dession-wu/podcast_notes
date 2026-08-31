@@ -75,6 +75,10 @@ class Settings(BaseSettings):
         default="gpt-4o-mini",
         description="OpenAI 默认模型",
     )
+    openai_reasoning_effort: str | None = Field(
+        default=None,
+        description="推理力度（none/low/medium/high）。推理型模型（如 DeepSeek V4）设为 none 可关闭思考模式，避免思维链耗尽 max_tokens 导致正文为空",
+    )
 
     # Anthropic
     anthropic_api_key: str | None = Field(
@@ -243,6 +247,18 @@ class Settings(BaseSettings):
         ge=0,
         le=10,
         description="最大重试次数",
+    )
+
+    # -------------------------------------------------------------------------
+    # API 安全配置
+    # -------------------------------------------------------------------------
+    podcast_notes_api_key: str | None = Field(
+        default=None,
+        description="后端 API 统一鉴权密钥（PODCAST_NOTES_API_KEY）；未配置且未允许匿名时接口拒绝访问",
+    )
+    podcast_notes_allow_anonymous: bool = Field(
+        default=False,
+        description="未配置 API Key 时是否允许匿名访问（仅建议本地单人使用场景显式开启）",
     )
 
     # -------------------------------------------------------------------------

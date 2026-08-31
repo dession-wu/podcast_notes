@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -44,6 +44,12 @@ data/temp/
 data/transcripts/
 data/metrics/
 data/output/
+data/jobs.sqlite3*
+data/notes.sqlite3*
+data/podcast_notes.db*
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 *.mp3
 *.m4a
 *.wav

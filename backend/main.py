@@ -11,14 +11,19 @@ sys.path.insert(0, str(project_root))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from backend.routers import health, search, process, transcribe, download, images, episodes, settings as settings_router, library as library_router, analyze
+from backend.routers import health, search, process, transcribe, download, images, episodes, settings as settings_router, library as library_router, analyze, notes as notes_router
+from backend.security import ApiKeyMiddleware
 
 app = FastAPI(
     title="Podcast Notes API",
     description="Backend API for Podcast Notes Platform",
     version="0.1.0",
 )
+
+# API Key 统一鉴权（先于 CORS 注册，使鉴权响应也带 CORS 头）
+app.add_middleware(ApiKeyMiddleware)
 
 # CORS for local development
 app.add_middleware(
@@ -53,6 +58,15 @@ app.include_router(episodes.router, prefix="/api/episodes", tags=["episodes"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(library_router.router, prefix="/api/library", tags=["library"])
 app.include_router(analyze.router, prefix="/api/analyze", tags=["analyze"])
+app.include_router(notes_router.router, prefix="/api/notes", tags=["notes"])
+
+# 静态图片服务：挂载 data/output/images，供前端预览/下载生成的笔记配图
+# （/images 前缀已在 security.PUBLIC_PATH_PREFIXES 中公开，见 security.py）
+from config import settings
+
+_images_dir = settings.output_dir / "images"
+_images_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=str(_images_dir)), name="images")
 
 
 @app.get("/")

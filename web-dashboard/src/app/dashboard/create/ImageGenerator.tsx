@@ -74,6 +74,19 @@ export default function ImageGenerator() {
     }
   };
 
+  /* 逐张触发浏览器下载（静态服务 /images 已由后端挂载） */
+  const handleDownloadAll = (job: ImageJob) => {
+    if (!job.result?.images?.length) return;
+    job.result.images.forEach((img) => {
+      const a = document.createElement("a");
+      a.href = `/images/${encodeURIComponent(img.name)}`;
+      a.download = img.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  };
+
   const handleGenerate = async () => {
     if (!formData.title.trim() || !formData.content.trim()) return;
     setIsSubmitting(true);
@@ -383,22 +396,29 @@ export default function ImageGenerator() {
                 <X className="w-5 h-5" />
               </button>
               <div className="space-y-3">
-                {selectedImage.result.images.map((img, i) => (
+                {selectedImage.result.images.map((img) => (
                   <div
                     key={img.id}
-                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl flex items-center justify-center aspect-[3/4]"
+                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl flex items-center justify-center aspect-[3/4] overflow-hidden"
                   >
-                    <div className="text-center">
-                      <Image className="w-16 h-16 text-white/20 mx-auto mb-2" />
-                      <p className="text-xs text-gray-500">{img.name}</p>
-                      <p className="text-[10px] text-gray-600 mt-1">图片 {i + 1}</p>
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/images/${encodeURIComponent(img.name)}`}
+                      alt={img.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
                   </div>
                 ))}
               </div>
               <div className="mt-4 flex items-center justify-between">
                 <h3 className="text-sm text-white">{selectedImage.title}</h3>
-                <button className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-full flex items-center gap-2 hover:bg-gray-100 transition cursor-pointer">
+                <button
+                  onClick={() => handleDownloadAll(selectedImage)}
+                  className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-full flex items-center gap-2 hover:bg-gray-100 transition cursor-pointer"
+                >
                   <Download className="w-3 h-3" />
                   下载全部
                 </button>

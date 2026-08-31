@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Radio,
+  NotebookPen,
 } from "lucide-react";
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { icon: Search, label: "播客搜索", href: "/dashboard/search" },
   { icon: FolderOpen, label: "文件库", href: "/dashboard/library" },
   { icon: Sparkles, label: "内容创作", href: "/dashboard/create" },
+  { icon: NotebookPen, label: "我的笔记", href: "/dashboard/notes" },
   { icon: Settings, label: "系统设置", href: "/dashboard/settings" },
 ];
 

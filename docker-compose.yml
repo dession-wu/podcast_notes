@@ -1,0 +1,52 @@
+# Podcast Notes — 容器编排（阿里云 ECS 部署）
+# 启动: 先在项目根目录准备 .env（含 PODCAST_NOTES_API_KEY），再 docker compose up -d --build
+# 姊妹项目参考: /opt/projects/ai_novel_agent、/opt/projects/ai_career_copilot
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: podcast_notes_backend
+    restart: unless-stopped
+    environment:
+      # fail-closed 鉴权: 必须显式提供
+      PODCAST_NOTES_API_KEY: ${PODCAST_NOTES_API_KEY:?PODCAST_NOTES_API_KEY 未配置，请在 .env 中设置}
+      PODCAST_NOTES_ALLOW_ANONYMOUS: "false"
+      DATA_DIR: /app/data
+      TZ: Asia/Shanghai
+    volumes:
+      # SQLite 数据库 + 音频/转写/生成图片全落此卷
+      - podcast_data:/app/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 25s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./web-dashboard
+      dockerfile: Dockerfile
+      args:
+        # 前端 bundle 内联的鉴权 Key，须与后端一致
+        NEXT_PUBLIC_API_KEY: ${PODCAST_NOTES_API_KEY:?PODCAST_NOTES_API_KEY 未配置，请在 .env 中设置}
+    container_name: podcast_notes_frontend
+    restart: unless-stopped
+    ports:
+      # 宿主 8083 对外
+      - "8083:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  podcast_data:

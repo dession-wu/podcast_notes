@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
 
-const notoSansSC = Noto_Sans_SC({
-  variable: "--font-noto-sans-sc",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700", "900"],
-});
+/*
+ * 说明: 原实现使用 next/font/google 的 Noto Sans SC。
+ * 该方案在构建期需要访问 fonts.googleapis.com，国内服务器无法连通会导致构建失败，
+ * 故改为系统字体栈（见 globals.css 中的 --font-sans 回退链），
+ * 本地与容器构建均可离线完成。
+ */
 
 export const metadata: Metadata = {
   title: "播客笔记 — 自动化内容提炼",
@@ -19,10 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="zh-CN"
-      className={`${notoSansSC.variable} h-full antialiased`}
-    >
+    <html lang="zh-CN" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-bg-primary text-text-primary font-sans">
         {children}
       </body>

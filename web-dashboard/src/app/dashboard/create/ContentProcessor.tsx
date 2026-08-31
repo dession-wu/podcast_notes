@@ -8,11 +8,13 @@ import {
   RotateCcw,
   Copy,
   Check,
+  CheckCircle2,
   AlertCircle,
   Mic,
   X,
   Wand2,
 } from "lucide-react";
+import Link from "next/link";
 import {
   processContent,
   analyzeContent,
@@ -28,6 +30,8 @@ export default function ContentProcessor() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  /* 记录本次生成笔记在笔记库中的编号，null 表示未保存成功 */
+  const [savedNoteId, setSavedNoteId] = useState<number | null>(null);
   const [importedFromTranscription, setImportedFromTranscription] =
     useState(false);
 
@@ -93,6 +97,8 @@ export default function ContentProcessor() {
     setError("");
     setUsedTemplate("");
     setRecommendationInfo(null);
+    /* 每次生成前重置保存状态 */
+    setSavedNoteId(null);
 
     try {
       const data = await processContent({
@@ -101,6 +107,8 @@ export default function ContentProcessor() {
       });
       setNote(data.note);
       setUsedTemplate(data.used_template);
+      /* 记录后端自动入库结果，用于提示用户 */
+      setSavedNoteId(data.saved_note_id ?? null);
       if (data.recommendation_info?.was_recommended) {
         setRecommendationInfo({
           was_recommended: true,
@@ -291,6 +299,31 @@ export default function ContentProcessor() {
                       {recommendationInfo.reason}
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* 笔记保存状态提示 */}
+              {savedNoteId !== null ? (
+                <div className="mb-4 flex items-center justify-between rounded-xl border border-green-500/20 bg-green-500/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" />
+                    <span className="text-xs text-green-300/80">
+                      已保存到我的笔记（编号 #{savedNoteId}），刷新页面不会丢失
+                    </span>
+                  </div>
+                  <Link
+                    href="/dashboard/notes"
+                    className="shrink-0 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs text-green-300 transition-colors hover:bg-green-500/20"
+                  >
+                    查看
+                  </Link>
+                </div>
+              ) : (
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-white/5 p-3">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
+                  <span className="text-xs text-amber-200/60">
+                    自动保存失败，笔记仅本次会话可见，请手动复制保存
+                  </span>
                 </div>
               )}
 

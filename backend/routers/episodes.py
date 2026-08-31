@@ -84,12 +84,9 @@ async def get_episodes(request: EpisodesRequest):
             feed = downloader.parse_rss(request.rss_url)
         except (RSSParseError, URLError, socket.timeout, OSError) as e:
             logger.warning("RSS 解析失败", error=str(e), rss_url=request.rss_url)
-            return EpisodesResponse(
-                podcast_title="未知播客",
-                podcast_description="无法解析该播客的 RSS 订阅源，可能是网络连接问题或 RSS 地址无效。",
-                podcast_image=None,
-                total_episodes=0,
-                episodes=[],
+            raise HTTPException(
+                status_code=400,
+                detail="无法解析该播客的 RSS 订阅源，可能是网络连接问题或 RSS 地址无效，请检查后重试。",
             )
         finally:
             socket.setdefaulttimeout(old_timeout)

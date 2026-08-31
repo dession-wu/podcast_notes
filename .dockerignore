@@ -1,0 +1,42 @@
+# 后端镜像构建上下文排除项（构建上下文 = 项目根目录）
+
+# Python 运行产物
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 前端（由 web-dashboard/Dockerfile 单独构建，勿进后端镜像）
+web-dashboard/
+
+# Git / IDE / 工具
+.git/
+.gitignore
+.trae/
+.joycode/
+
+# 环境与密钥（容器内只经 compose environment 注入）
+.env
+.env.*
+!.env.example
+
+# 运行数据与大体积素材（落卷，不打进镜像）
+data/
+test_output/
+assets/
+templates/previews/
+*.png
+*.mp4
+*.db
+
+# 测试与文档
+tests/
+test_*.py
+debug_*.py
+*.md
+docs/
+
+# 杂项（不影响 templates/ 下的 jinja2 模板）
+*.log
+*.tmp

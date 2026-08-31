@@ -25,12 +25,12 @@ export interface DownloadTask {
   episodeTitle?: string;
   status: string;
   progress: number;
-  error?: string;
-  errorCategory?: string;
-  result?: DownloadStatusResponse["result"];
+  error?: string | null;
+  errorCategory?: string | null;
+  result?: DownloadStatusResponse["result"] | null;
   // Enhanced progress info
-  downloadedBytes?: number;
-  totalBytes?: number;
+  downloadedBytes?: number | null;
+  totalBytes?: number | null;
   speed?: string;
   eta?: string;
 }
@@ -145,7 +145,7 @@ export default function DownloadManager({ tasks, onClose, onRetry, onRemove }: D
                     {task.status === "completed" ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     ) : task.status === "failed" ? (
-                      getErrorIcon(task.errorCategory)
+                      getErrorIcon(task.errorCategory || undefined)
                     ) : (
                       <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                     )}
@@ -258,7 +258,7 @@ export default function DownloadManager({ tasks, onClose, onRetry, onRemove }: D
                           </button>
                         </div>
                         <p className="text-[10px] text-gray-600 mt-0.5">
-                          {getErrorAction(task.errorCategory)}
+                          {getErrorAction(task.errorCategory || undefined)}
                         </p>
                       </div>
                     )}

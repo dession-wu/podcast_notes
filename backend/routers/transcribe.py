@@ -16,6 +16,9 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from config import settings
+from backend.job_store import add_job, mark_job_finished, register_jobs_dict
+from backend.persistent_jobs import PersistentJobsDict
+from backend.security import is_path_allowed
 from core.smart_transcriber import SmartTranscriber, SmartTranscriberError
 from core.transcriber import Transcriber, TranscriberError
 from models.podcast import PodcastEpisode
@@ -28,8 +31,8 @@ router = APIRouter()
 # Thread pool for running sync transcription in background
 transcribe_executor = ThreadPoolExecutor(max_workers=2)
 
-# In-memory job storage (replace with Redis/DB in production)
-jobs: dict[str, dict] = {}
+# 任务存储：SQLite 持久化（重启恢复），并注册到统一淘汰机制
+jobs: PersistentJobsDict = PersistentJobsDict("transcribe")
 
 # Supported audio formats
 SUPPORTED_AUDIO_FORMATS = {".mp3", ".m4a", ".aac", ".ogg", ".wav", ".flac", ".wma", ".opus"}
@@ -432,6 +435,7 @@ def _do_transcription(task_id: str, file_path: Path, title: str, force_engine: s
             detection_info = {"language": transcript.language, "method": "auto"}
 
             jobs[task_id]["status"] = "completed"
+            mark_job_finished(jobs, task_id)
             jobs[task_id]["progress"] = 100.0
             jobs[task_id]["result"] = {
                 "text": transcript.text,
@@ -480,6 +484,7 @@ def _do_transcription(task_id: str, file_path: Path, title: str, force_engine: s
         )
         
         jobs[task_id]["status"] = "failed"
+        mark_job_finished(jobs, task_id)
         jobs[task_id]["error"] = message
         jobs[task_id]["error_category"] = category
         jobs[task_id]["error_detail"] = str(e)  # Store original error detail
@@ -537,7 +542,7 @@ async def start_transcription(audio: UploadFile = File(...)):
             )
 
         # Create job
-        jobs[task_id] = {
+        add_job(jobs, task_id, {
             "status": "pending",
             "progress": 0.0,
             "file_path": str(file_path),
@@ -546,7 +551,7 @@ async def start_transcription(audio: UploadFile = File(...)):
             "error_category": None,
             "estimate": estimate,
             "start_time": time.time(),
-        }
+        })
 
         # Start transcription in background
         loop = asyncio.get_event_loop()
@@ -584,6 +589,17 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
     task_id = str(uuid.uuid4())
     file_path = Path(request.file_path)
 
+    # 路径白名单校验：只允许访问配置的音频/上传目录，拒绝目录穿越
+    if not is_path_allowed(file_path):
+        logger.warning(
+            "by-path 请求被拒绝：路径不在允许目录内",
+            file_path=str(file_path),
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="文件路径不在允许的目录范围内，仅支持音频下载/上传目录中的文件",
+        )
+
     # Validate file
     is_valid, error_msg = _validate_audio_file(file_path)
     if not is_valid:
@@ -619,7 +635,7 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
         )
 
     # Create job
-    jobs[task_id] = {
+    add_job(jobs, task_id, {
         "status": "pending",
         "progress": 0.0,
         "file_path": str(file_path),
@@ -628,7 +644,7 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
         "error_category": None,
         "estimate": estimate,
         "start_time": time.time(),
-    }
+    })
 
     # Start transcription in background with smart routing
     loop = asyncio.get_event_loop()

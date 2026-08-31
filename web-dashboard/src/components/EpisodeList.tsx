@@ -10,6 +10,7 @@ import {
   ArrowUpDown,
   Headphones,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { getEpisodes, EpisodeItem, startDownload, getDownloadStatus } from "@/lib/api";
 
@@ -47,8 +48,12 @@ export default function EpisodeList({ rssUrl, podcastTitle, onClose, onDownload 
       });
       setEpisodes(data.episodes);
       setTotalEpisodes(data.total_episodes);
-    } catch (err) {
-      setError("加载单集列表失败");
+    } catch (err: any) {
+      const message =
+        err?.message && err.message !== "Failed to fetch"
+          ? err.message
+          : "加载单集列表失败，可能是网络连接问题，请稍后重试";
+      setError(message);
       console.error("Load episodes error:", err);
     } finally {
       setLoading(false);
@@ -139,8 +144,17 @@ export default function EpisodeList({ rssUrl, podcastTitle, onClose, onDownload 
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
-          {error}
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 flex items-start justify-between gap-3">
+          <span className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span className="leading-relaxed">{error}</span>
+          </span>
+          <button
+            onClick={() => loadEpisodes()}
+            className="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 transition flex-shrink-0"
+          >
+            重试
+          </button>
         </div>
       )}
 
@@ -156,6 +170,19 @@ export default function EpisodeList({ rssUrl, podcastTitle, onClose, onDownload 
         </div>
       ) : (
         <>
+          {/* Empty state: 解析成功但该播客暂无单集 */}
+          {episodes.length === 0 && !error && (
+            <div className="py-8 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-white/[0.03] flex items-center justify-center mb-3">
+                <Headphones className="w-5 h-5 text-gray-600" />
+              </div>
+              <p className="text-xs text-gray-500">解析成功，但该播客暂无单集</p>
+              <p className="text-[10px] text-gray-600 mt-1">
+                RSS 订阅源有效，可能尚未发布任何节目
+              </p>
+            </div>
+          )}
+
           {/* Episode List */}
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {episodes.map((episode) => (

@@ -436,9 +436,18 @@ class PodcastSearcher:
                 seen_rss.add(result.rss_url)
                 unique_results.append(result)
 
-        if not unique_results:
-            error_detail = "; ".join(errors) if errors else "未知错误"
+        # 区分“数据源真实请求失败”与“搜索无结果”两种语义：
+        # 仅当所有数据源均请求失败时才抛异常；部分失败时记录警告并正常返回（可能为空列表）
+        if errors and len(errors) >= len(sources_to_try):
+            error_detail = "; ".join(errors)
             raise PodcastSearchError(f"所有数据源搜索失败: {error_detail}")
+
+        if errors:
+            logger.warning("部分数据源搜索失败", term=term, errors=errors)
+
+        if not unique_results:
+            logger.info("播客搜索无结果", term=term, sources_tried=sources_to_try)
+            return []
 
         logger.info(
             "播客搜索完成",

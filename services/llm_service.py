@@ -136,10 +136,24 @@ class LLMService:
         }
         if max_tokens:
             params["max_tokens"] = max_tokens
+        if settings.openai_reasoning_effort:
+            params["reasoning_effort"] = settings.openai_reasoning_effort
 
         try:
             response = client.chat.completions.create(**params)
-            return response.choices[0].message.content or ""
+            content = response.choices[0].message.content or ""
+            # 防御：推理型模型思考链耗尽 max_tokens 时 content 为空、
+            # 结果落在 reasoning_content 中，此时抛错触发重试而非静默返回空串
+            if not content.strip():
+                reasoning = getattr(response.choices[0].message, "reasoning_content", None)
+                if reasoning:
+                    raise LLMServiceError(
+                        "LLM 返回正文为空（推理模型思考链可能耗尽 max_tokens，"
+                        "建议设置 OPENAI_REASONING_EFFORT=none 或调大 max_tokens）"
+                    )
+            return content
+        except LLMServiceError:
+            raise
         except Exception as e:
             raise LLMServiceError(f"OpenAI API 调用失败: {e}") from e
 

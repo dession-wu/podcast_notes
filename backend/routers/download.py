@@ -15,6 +15,8 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from backend.job_store import add_job, mark_job_finished, register_jobs_dict
+from backend.persistent_jobs import PersistentJobsDict
 from core.audio_downloader import AudioDownloader
 from utils import get_logger
 
@@ -24,8 +26,8 @@ router = APIRouter()
 # 线程池用于执行同步下载操作
 download_executor = ThreadPoolExecutor(max_workers=3)
 
-# In-memory job storage (replace with Redis/DB in production)
-jobs: dict[str, dict] = {}
+# 任务存储：SQLite 持久化（重启恢复），并注册到统一淘汰机制
+jobs: PersistentJobsDict = PersistentJobsDict("download")
 
 
 class DownloadErrorCategory:
@@ -154,7 +156,7 @@ async def start_download(request: DownloadRequest):
     """Start a download task."""
     task_id = str(uuid.uuid4())
 
-    jobs[task_id] = {
+    add_job(jobs, task_id, {
         "status": "pending",
         "progress": 0.0,
         "downloaded_bytes": 0,
@@ -165,7 +167,7 @@ async def start_download(request: DownloadRequest):
         "rss_url": request.rss_url,
         "episode_index": request.episode_index,
         "created_at": time.time(),
-    }
+    })
 
     # 在后台线程中执行下载
     asyncio.create_task(_do_download(task_id, request))
@@ -195,6 +197,7 @@ async def _do_download(task_id: str, request: DownloadRequest):
         )
 
         jobs[task_id]["status"] = "completed"
+        mark_job_finished(jobs, task_id)
         jobs[task_id]["progress"] = 100.0
         jobs[task_id]["result"] = {
             "file_path": str(local_path),
@@ -209,6 +212,7 @@ async def _do_download(task_id: str, request: DownloadRequest):
         category, message = _categorize_error(e)
         logger.error("Download failed", error=message, category=category, task_id=task_id)
         jobs[task_id]["status"] = "failed"
+        mark_job_finished(jobs, task_id)
         jobs[task_id]["error"] = message
         jobs[task_id]["error_category"] = category
 
@@ -265,7 +269,7 @@ async def batch_download(request: BatchDownloadRequest):
 
     for idx in request.episode_indices:
         task_id = str(uuid.uuid4())
-        jobs[task_id] = {
+        add_job(jobs, task_id, {
             "status": "pending",
             "progress": 0.0,
             "result": None,
@@ -274,7 +278,7 @@ async def batch_download(request: BatchDownloadRequest):
             "rss_url": request.rss_url,
             "episode_index": idx,
             "created_at": time.time(),
-        }
+        })
 
         download_req = DownloadRequest(
             rss_url=request.rss_url,
@@ -303,13 +307,14 @@ async def get_download_history(limit: int = 20):
 
     history = []
     for task_id, job in sorted_jobs:
+        result = job.get("result") or {}
         history.append({
             "task_id": task_id,
             "status": job["status"],
             "progress": job.get("progress"),
-            "episode_title": job.get("result", {}).get("episode_title", "未知单集"),
-            "podcast_name": job.get("result", {}).get("podcast_name", "未知播客"),
-            "file_size_mb": job.get("result", {}).get("file_size_mb"),
+            "episode_title": result.get("episode_title", "未知单集"),
+            "podcast_name": result.get("podcast_name", "未知播客"),
+            "file_size_mb": result.get("file_size_mb"),
             "created_at": job.get("created_at"),
             "error": job.get("error"),
             "error_category": job.get("error_category"),
@@ -345,9 +350,9 @@ async def open_download_folder(task_id: str):
         system = platform.system()
 
         if system == "Windows":
-            # Windows: explorer /select,"path" — 必须作为单个字符串传递
-            cmd = f'explorer /select,"{str(file_path)}"'
-            subprocess.Popen(cmd, shell=True)
+            # 参数列表传递（shell=False），路径中的特殊字符不会被 shell 解释
+            # explorer 的 /select, 需与路径作为一个参数传递
+            subprocess.Popen(["explorer", f"/select,{str(file_path)}"])
 
         elif system == "Darwin":
             # macOS: open -R path 可以打开文件夹并高亮文件

@@ -29,6 +29,7 @@ import {
   startTranscriptionByPath,
   getTranscriptionStatus,
   TranscribeStatusResponse,
+  deleteLibraryFile,
 } from "@/lib/api";
 import {
   getStoredTranscriptionTasks,
@@ -75,11 +76,11 @@ interface TranscriptionTask {
     text: string;
     word_count: number;
     segment_count?: number;
-    language: string;
-    duration_seconds?: number;
-    engine_used?: string;
-    language_detected?: string;
-    detection_method?: string;
+    language: string | null;
+    duration_seconds?: number | null;
+    engine_used?: string | null;
+    language_detected?: string | null;
+    detection_method?: string | null;
   } | null;
   error: string | null;
   errorCategory: string | null;
@@ -108,6 +109,7 @@ export default function LibraryPage() {
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transcriptionTasks, setTranscriptionTasks] = useState<Record<string, TranscriptionTask>>({});
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -309,6 +311,20 @@ export default function LibraryPage() {
     }
   };
 
+  const handleDeleteFile = async (file: LibraryFile) => {
+    if (deletingId === file.id) return;
+    if (!confirm(`确定删除「${file.name}」吗？此操作不可恢复。`)) return;
+    setDeletingId(file.id);
+    try {
+      await deleteLibraryFile(file.file_path);
+      await fetchFiles();
+    } catch (err: any) {
+      alert(`删除失败: ${err.message || "未知错误"}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleOpenLocation = async (file: LibraryFile) => {
     setOpeningId(file.id);
     try {
@@ -343,9 +359,9 @@ export default function LibraryPage() {
         result: null,
         error: null,
         errorCategory: null,
-        estimate: response.estimate ?? null,
+        estimate: null,
         elapsedSeconds: null,
-        remainingSeconds: response.estimate?.total_seconds ?? null,
+        remainingSeconds: response.estimate ?? null,
       };
 
       setTranscriptionTasks((prev) => ({
@@ -386,6 +402,26 @@ export default function LibraryPage() {
       setTranscribingId(null);
     }
   };
+
+  const autoTranscribeHandledRef = useRef(false);
+
+  /* 支持 ?transcribe_path=xxx 参数：从下载完成通知跳转后自动触发转录 */
+  useEffect(() => {
+    if (autoTranscribeHandledRef.current) return;
+    const transcribePath = new URLSearchParams(window.location.search).get("transcribe_path");
+    if (!transcribePath) return;
+    if (loading) return;
+    autoTranscribeHandledRef.current = true;
+    window.history.replaceState({}, "", window.location.pathname);
+
+    const targetFile = files.find((f) => f.file_path === transcribePath);
+    if (targetFile) {
+      handleTranscribe(targetFile);
+    } else {
+      alert("未在文件库中找到该音频文件，请刷新文件库后手动点击对应文件的转录按钮。");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, loading]);
 
   const handleRetryTranscription = async (fileId: string) => {
     const file = files.find((f) => f.id === fileId);
@@ -633,8 +669,14 @@ export default function LibraryPage() {
                           <button
                             className="p-2 rounded-xl bg-white/5 hover:bg-red-500/10 transition"
                             title="删除"
+                            onClick={() => handleDeleteFile(file)}
+                            disabled={deletingId === file.id}
                           >
-                            <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400" />
+                            {deletingId === file.id ? (
+                              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -835,9 +877,9 @@ export default function LibraryPage() {
         fileId={viewerTask?.fileId}
         metadata={viewerTask?.result ? {
           word_count: viewerTask.result.word_count,
-          language: viewerTask.result.language,
-          engine_used: viewerTask.result.engine_used,
-          duration_seconds: viewerTask.result.duration_seconds,
+          language: viewerTask.result.language || undefined,
+          engine_used: viewerTask.result.engine_used || undefined,
+          duration_seconds: viewerTask.result.duration_seconds || undefined,
         } : null}
       />
     </div>

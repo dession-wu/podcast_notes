@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.config.download_settings import download_settings_manager
+from backend.security import is_path_allowed
 from utils import get_logger
 
 logger = get_logger(__name__)
@@ -205,8 +206,8 @@ async def open_file_location(request: OpenFileRequest):
         system = platform.system()
 
         if system == "Windows":
-            cmd = f'explorer /select,"{str(file_path)}"'
-            subprocess.Popen(cmd, shell=True)
+            # 参数列表传递（shell=False），路径中的特殊字符不会被 shell 解释
+            subprocess.Popen(["explorer", f"/select,{str(file_path)}"])
         elif system == "Darwin":
             subprocess.Popen(["open", "-R", str(file_path)])
         elif system == "Linux":
@@ -252,3 +253,66 @@ async def get_transcript_content(file_id: str):
                     raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
     raise HTTPException(status_code=404, detail="Transcript file not found")
+
+
+class DeleteFileRequest(BaseModel):
+    """Delete library file request."""
+
+    file_path: str
+
+
+class DeleteFileResponse(BaseModel):
+    """Delete library file response."""
+
+    success: bool
+    message: str
+    file_name: str
+
+
+def _is_deletable_library_path(file_path: Path) -> bool:
+    """校验待删除路径是否位于允许范围内.
+
+    音频目录复用 security.is_path_allowed 白名单（含用户自定义下载目录）；
+    转录/图片目录不在该白名单内，按 library 自身目录结构补充校验。
+    两者均为 resolve 后的前缀校验，拒绝目录穿越。
+    """
+    try:
+        resolved = file_path.resolve()
+    except (OSError, RuntimeError):
+        return False
+
+    if is_path_allowed(resolved):
+        return True
+
+    data_dir = _get_data_dir()
+    for sub in ("transcripts", "images"):
+        root = (data_dir / sub).resolve()
+        if root.exists() and (resolved == root or resolved.is_relative_to(root)):
+            return True
+    return False
+
+
+@router.delete("/files", response_model=DeleteFileResponse)
+async def delete_library_file(request: DeleteFileRequest):
+    """删除文件库中的单个文件（音频/转录/图片）。"""
+    file_path = Path(request.file_path).expanduser()
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="文件不存在或已被删除")
+
+    if not _is_deletable_library_path(file_path):
+        raise HTTPException(status_code=403, detail="路径不在文件库允许范围内，拒绝删除")
+
+    try:
+        file_path.resolve().unlink()
+        logger.info("删除文件库文件", file_path=str(file_path))
+        return DeleteFileResponse(
+            success=True,
+            message="删除成功",
+            file_name=file_path.name,
+        )
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="权限不足，无法删除该文件")
+    except OSError as e:
+        logger.error("删除文件失败", error=str(e), file_path=str(file_path))
+        raise HTTPException(status_code=500, detail=f"删除文件失败: {e}")
