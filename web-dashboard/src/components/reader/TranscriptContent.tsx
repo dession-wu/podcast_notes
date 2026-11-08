@@ -1,5 +1,9 @@
 "use client";
 
+import { highlightHTML } from '../../lib/safeHighlight.mjs';
+const highlightText = (text: string, keyword: string) => highlightHTML(text, keyword, true);
+
+
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { useReader } from "./ReaderContext";
 import { Clock, User, Play } from "lucide-react";
@@ -565,15 +569,7 @@ function isValidSpeakerName(name: string): boolean {
 // 工具函数
 // ============================================
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
-function highlightText(text: string, keyword: string): string {
-  if (!keyword.trim()) return text;
-  const escaped = escapeRegex(keyword);
-  return text.replace(new RegExp(`(${escaped})`, "gi"), '<mark class="transcript-mark">$1</mark>');
-}
 
 // 说话人颜色分配
 function getSpeakerColors(speakers: (string | null)[]): Map<string, string> {

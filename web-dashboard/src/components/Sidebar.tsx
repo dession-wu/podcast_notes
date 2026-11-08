@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Radio,
+  NotebookPen,
 } from "lucide-react";
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { icon: Search, label: "播客搜索", href: "/dashboard/search" },
   { icon: FolderOpen, label: "文件库", href: "/dashboard/library" },
   { icon: Sparkles, label: "内容创作", href: "/dashboard/create" },
+  { icon: NotebookPen, label: "我的笔记", href: "/dashboard/notes" },
   { icon: Settings, label: "系统设置", href: "/dashboard/settings" },
 ];
 
@@ -58,20 +60,18 @@ export default function Sidebar() {
           x: mobileOpen ? 0 : "-100%",
         }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed md:relative top-0 left-0 h-screen w-[240px] bg-[#0c0c0e]/95 backdrop-blur-xl border-r border-gray-900 flex flex-col z-40 md:translate-x-0"
+        className="fixed md:relative top-0 left-0 h-screen w-[240px] bg-[#0c0c0e]/95 backdrop-blur-xl border-r border-gray-900 flex flex-col z-40 md:!transform-none"
       >
         {/* Logo */}
         <div className="p-6 border-b border-gray-900">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
-              <Radio className="w-4 h-4 text-gray-300" />
-            </div>
+            <img src="/brand/icon.svg?v=20261103-brand1" width={32} height={32} alt="" className="shrink-0 rounded-lg" />
             <div>
               <div className="text-white font-bold text-sm tracking-wider font-mono">
-                PODCAST
+                播客手账
               </div>
               <div className="text-[10px] text-gray-600 uppercase tracking-widest font-mono">
-                Notes
+                PODCAST JOURNAL
               </div>
             </div>
           </Link>
@@ -99,7 +99,7 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Footer Status */}
+        <form method="post" action="/logout" className="px-4 pb-4"><button type="submit" className="w-full rounded-xl border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-white/5">退出登录</button></form><a href="/account" className="block px-6 pb-4 text-sm text-gray-300">我的 AI 模型</a>{/* Footer Status */}
         <div className="p-4 border-t border-gray-900">
           <p className="text-[9px] text-gray-700 tracking-widest font-mono uppercase">
             ● System Active

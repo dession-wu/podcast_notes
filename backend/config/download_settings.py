@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from config.settings import settings as app_settings
 
-DEFAULT_CONFIG_PATH = Path("./config/download_config.json")
+DEFAULT_CONFIG_PATH = app_settings.data_dir / "config" / "download_config.json"
 
 
 class DownloadSettingsModel(BaseModel):
@@ -57,9 +59,13 @@ class DownloadSettingsManager:
         if self._settings is not None:
             return self._settings
 
-        if self.config_path.exists():
+        source = self.config_path
+        legacy = Path("./config/download_config.json")
+        if self.config_path == DEFAULT_CONFIG_PATH and not source.exists() and legacy.exists():
+            source = legacy
+        if source.exists():
             try:
-                with open(self.config_path, "r", encoding="utf-8") as f:
+                with open(source, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._settings = DownloadSettingsModel(**data)
             except (json.JSONDecodeError, ValueError):
@@ -72,8 +78,15 @@ class DownloadSettingsManager:
     def save(self, settings: DownloadSettingsModel) -> None:
         """保存设置到 JSON 文件."""
         self._ensure_config_dir()
-        with open(self.config_path, "w", encoding="utf-8") as f:
-            json.dump(settings.model_dump(), f, ensure_ascii=False, indent=2)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.config_path.parent, delete=False) as f:
+                temporary = f.name
+                json.dump(settings.model_dump(), f, ensure_ascii=False, indent=2)
+            os.replace(temporary, self.config_path)
+        finally:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
         self._settings = settings
 
     def reset(self) -> DownloadSettingsModel:
@@ -91,12 +104,14 @@ class DownloadSettingsManager:
             "writable": False,
         }
         try:
-            p = Path(path)
+            if not path.strip() or not Path(path).expanduser().is_absolute():
+                raise ValueError("请输入服务器上的绝对目录路径")
+            p = Path(path).expanduser().resolve()
+            result["path"] = str(p)
             p.mkdir(parents=True, exist_ok=True)
-            test_file = p / ".write_test"
             try:
-                test_file.touch()
-                test_file.unlink()
+                with tempfile.TemporaryFile(dir=p):
+                    pass
                 result["writable"] = True
                 result["valid"] = True
             except PermissionError:

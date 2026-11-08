@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Image,
@@ -9,7 +9,6 @@ import {
   X,
   CheckCircle,
   Clock,
-  Plus,
   Loader2,
   AlertCircle,
   Wand2,
@@ -18,6 +17,7 @@ import {
   startImageGeneration,
   getImageStatus,
   ImageStatusResponse,
+  ApiError,
 } from "@/lib/api";
 
 interface ImageJob {
@@ -50,28 +50,62 @@ export default function ImageGenerator() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<ImageJob | null>(null);
-
-  const pollStatus = async (taskId: string) => {
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
     try {
-      const status = await getImageStatus(taskId);
-      setJobs((prev) =>
-        prev.map((job) =>
-          job.id === taskId
-            ? {
-                ...job,
-                status: status.status as ImageJob["status"],
-                progress: status.progress || 0,
-                result: status.result || undefined,
-                error: status.error || undefined,
-              }
-            : job
-        )
-      );
-      return status.status === "completed" || status.status === "failed";
-    } catch (err) {
-      console.error("Polling error:", err);
-      return false;
+      const saved: unknown = JSON.parse(sessionStorage.getItem("podcast-image-jobs-v1") || "[]");
+      // Restore browser-only task history after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (Array.isArray(saved)) setJobs(saved.filter((job): job is ImageJob => !!job && typeof job.id === "string" && ["generating", "completed", "error"].includes(job.status)));
+    } catch { /* unavailable storage must not block generation */ }
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (restored) {
+      try { sessionStorage.setItem("podcast-image-jobs-v1", JSON.stringify(jobs.slice(0, 50))); } catch { /* quota/private mode */ }
     }
+  }, [jobs, restored]);
+
+  const pendingIds = jobs.filter((job) => job.status === "generating").map((job) => job.id).join(",");
+  useEffect(() => {
+    if (!pendingIds) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      await Promise.all(pendingIds.split(",").map(async (id) => {
+        try {
+          const result = await getImageStatus(id);
+          if (active) setJobs((prev) => prev.map((job) => job.id !== id ? job : {
+            ...job,
+            status: result.status === "failed" ? "error" : result.status === "completed" ? "completed" : "generating",
+            progress: result.progress ?? 0, result: result.result ?? undefined, error: result.error ?? undefined,
+          }));
+        } catch (err) {
+          if (!active) return;
+          if (err instanceof ApiError && err.status === 404) {
+            setJobs((prev) => prev.map((job) => job.id !== id ? job : {...job, status: "error", error: "任务已过期，请重新生成"}));
+          } else {
+            setGlobalError("任务状态暂时无法获取，连接恢复后将自动重试");
+          }
+        }
+      }));
+      if (active) timer = setTimeout(poll, 3000);
+    };
+    void poll();
+    return () => { active = false; clearTimeout(timer); };
+  }, [pendingIds]);
+
+  /* 逐张触发浏览器下载（静态服务 /images 已由后端挂载） */
+  const handleDownloadAll = (job: ImageJob) => {
+    if (!job.result?.images?.length) return;
+    job.result.images.forEach((img) => {
+      const a = document.createElement("a");
+      a.href = `/images/${encodeURIComponent(img.name)}`;
+      a.download = img.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
   };
 
   const handleGenerate = async () => {
@@ -102,11 +136,6 @@ export default function ImageGenerator() {
       setFormData({ title: "", content: "", tags: "", podcastName: "", episodeTitle: "", style: "blue" });
       setShowGenerateModal(false);
 
-      const timer = setInterval(async () => {
-        const done = await pollStatus(response.task_id);
-        if (done) clearInterval(timer);
-      }, 3000);
-      setTimeout(() => clearInterval(timer), 300000);
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : "生成失败");
     } finally {
@@ -288,6 +317,10 @@ export default function ImageGenerator() {
                 } flex items-center justify-center relative`}
                 onClick={() => job.status === "completed" && setSelectedImage(job)}
               >
+                {job.status === "completed" && job.result?.images[0] && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/images/${encodeURIComponent(job.result.images[0].name)}`} alt={job.title} className="absolute inset-0 h-full w-full object-cover" />
+                )}
                 {job.status === "generating" ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -305,6 +338,7 @@ export default function ImageGenerator() {
               </div>
               <div className="p-4">
                 <h3 className="text-xs font-medium text-white truncate">{job.title}</h3>
+                {job.status === "error" && <p role="alert" className="mt-2 break-words text-xs text-red-400">{job.error || "生成失败，请重新生成"}</p>}
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-[10px] text-gray-700 font-mono">
                     {job.status === "generating" ? (
@@ -321,14 +355,14 @@ export default function ImageGenerator() {
                     {job.status === "completed" && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setSelectedImage(job); }}
-                        className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition p-1.5 rounded-lg bg-white/5 hover:bg-white/10"
                       >
                         <Download className="w-3 h-3 text-gray-400" />
                       </button>
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); removeJob(job.id); }}
-                      className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition p-1.5 rounded-lg bg-white/5 hover:bg-white/10"
                     >
                       <X className="w-3 h-3 text-gray-400" />
                     </button>
@@ -373,32 +407,40 @@ export default function ImageGenerator() {
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="relative max-w-lg w-full"
+              className="relative max-h-[85vh] max-w-lg w-full overflow-y-auto rounded-3xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button
+                aria-label="关闭图片预览"
                 onClick={() => setSelectedImage(null)}
-                className="absolute -top-10 right-0 p-2 text-gray-400 hover:text-white transition cursor-pointer"
+                className="sticky top-0 z-10 ml-auto flex rounded-full bg-black/80 p-2 text-gray-400 hover:text-white transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
               <div className="space-y-3">
-                {selectedImage.result.images.map((img, i) => (
+                {selectedImage.result.images.map((img) => (
                   <div
                     key={img.id}
-                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl flex items-center justify-center aspect-[3/4]"
+                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl flex items-center justify-center aspect-[3/4] overflow-hidden"
                   >
-                    <div className="text-center">
-                      <Image className="w-16 h-16 text-white/20 mx-auto mb-2" />
-                      <p className="text-xs text-gray-500">{img.name}</p>
-                      <p className="text-[10px] text-gray-600 mt-1">图片 {i + 1}</p>
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/images/${encodeURIComponent(img.name)}`}
+                      alt={img.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
                   </div>
                 ))}
               </div>
               <div className="mt-4 flex items-center justify-between">
                 <h3 className="text-sm text-white">{selectedImage.title}</h3>
-                <button className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-full flex items-center gap-2 hover:bg-gray-100 transition cursor-pointer">
+                <button
+                  onClick={() => handleDownloadAll(selectedImage)}
+                  className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-full flex items-center gap-2 hover:bg-gray-100 transition cursor-pointer"
+                >
                   <Download className="w-3 h-3" />
                   下载全部
                 </button>

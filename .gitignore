@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -44,6 +44,11 @@ data/temp/
 data/transcripts/
 data/metrics/
 data/output/
+data/jobs.sqlite3*
+data/notes.sqlite3*
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 *.mp3
 *.m4a
 *.wav
@@ -83,3 +88,32 @@ coverage/
 tools/*/bin/
 tools/*.exe
 tools/*.zip
+
+# Mini-program deployment secrets and local WeChat tool settings
+deploy/miniprogram/.env
+miniprogram/project.private.config.json
+
+# Mini-program private data, model caches and inference diagnostics
+/data/miniprogram*/
+
+# Local runtime data and private configuration
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.db
+*.sqlite*
+*.log
+*.tsbuildinfo
+/private-model-data/
+/data/
+**/uploads/
+project.private.config.json
+*.pem
+*.key

@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/episodes/episodes",
+    "pages/tasks/tasks",
+    "pages/reader/reader",
+    "pages/ai-settings/ai-settings"
+  ],
+  "window": {
+    "navigationBarTitleText": "播客转文字",
+    "navigationBarBackgroundColor": "#f6f3ed",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f3ed"
+  },
+  "tabBar": {
+    "color": "#6b6d64",
+    "selectedColor": "#a4412d",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "搜索播客",
+        "iconPath": "assets/search.png",
+        "selectedIconPath": "assets/search-selected.png"
+      },
+      {
+        "pagePath": "pages/tasks/tasks",
+        "text": "我的文字",
+        "iconPath": "assets/book.png",
+        "selectedIconPath": "assets/book-selected.png"
+      }
+    ],
+    "backgroundColor": "#f6f3ed",
+    "borderStyle": "white"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

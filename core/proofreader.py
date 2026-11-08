@@ -58,7 +58,8 @@ class Proofreader:
         prompt = f"{self.SYSTEM_PROMPT}\n\n文本：\n{text}"
         
         try:
-            response = await self.llm.generate(prompt)
+            from starlette.concurrency import run_in_threadpool
+            response = await run_in_threadpool(self.llm.generate, prompt)
             # Extract JSON from response
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if not json_match:

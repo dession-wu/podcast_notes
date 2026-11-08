@@ -14,6 +14,27 @@ from utils import get_logger
 logger = get_logger(__name__)
 router = APIRouter()
 
+from backend.config.application_settings import (
+    ApplicationSettingsRequest, public_settings, save_application_settings,
+)
+from config import settings as app_settings
+
+
+@router.get("/application")
+def get_application_settings():
+    return public_settings()
+
+
+@router.put("/application")
+def update_application_settings(request: ApplicationSettingsRequest):
+    try:
+        return save_application_settings(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OSError as exc:
+        logger.error("配置保存失败", error=str(exc))
+        raise HTTPException(status_code=500, detail="配置保存失败，请检查服务器存储权限与空间") from exc
+
 
 class DownloadPathRequest(BaseModel):
     """Update download path request."""
@@ -47,7 +68,7 @@ async def get_download_path():
     return DownloadPathResponse(
         current_path=str(effective),
         is_custom=settings.custom_download_dir is not None,
-        default_path=str(effective) if not settings.custom_download_dir else "",
+        default_path=str(app_settings.audio_download_dir),
     )
 
 
@@ -59,14 +80,14 @@ async def set_download_path(request: DownloadPathRequest):
         raise HTTPException(status_code=400, detail=validation["error"])
 
     settings = download_settings_manager.load()
-    settings.custom_download_dir = request.path
+    settings = DownloadSettingsModel(custom_download_dir=validation["path"])
     download_settings_manager.save(settings)
 
     effective = settings.get_effective_download_dir()
     return DownloadPathResponse(
         current_path=str(effective),
         is_custom=True,
-        default_path="",
+        default_path=str(app_settings.audio_download_dir),
     )
 
 

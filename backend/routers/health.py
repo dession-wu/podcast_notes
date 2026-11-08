@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from config import settings
-from services.llm_service import LLMService
+from importlib.util import find_spec
 
 router = APIRouter()
 
@@ -14,12 +14,8 @@ router = APIRouter()
 async def health_check():
     """Check API health and service status."""
     # Check LLM service
-    llm_status = "unknown"
-    try:
-        llm = LLMService()
-        llm_status = "connected" if llm.provider != "unknown" else "not_configured"
-    except Exception:
-        llm_status = "error"
+    provider = settings.default_llm_provider.value
+    llm_status = "configured" if provider == "ollama" or bool(getattr(settings, f"{provider}_api_key", None)) else "not_configured"
 
     # Check PodcastIndex config
     podcast_index_status = (
@@ -29,7 +25,9 @@ async def health_check():
     )
 
     # Check STT config
-    stt_status = "configured" if settings.stt_provider else "not_configured"
+    modules = {"whisper": "whisper", "faster-whisper": "faster_whisper", "sensevoice": "funasr"}
+    engine = settings.stt_provider.value
+    stt_status = "configured" if (find_spec(modules[engine]) is not None if engine in modules else settings.is_elevenlabs_configured) else "not_configured"
 
     return {
         "status": "ok",

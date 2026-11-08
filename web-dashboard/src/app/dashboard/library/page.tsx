@@ -29,6 +29,10 @@ import {
   startTranscriptionByPath,
   getTranscriptionStatus,
   TranscribeStatusResponse,
+  deleteLibraryFile,
+  openLibraryLocation,
+  uploadAudio,
+  ApiError,
 } from "@/lib/api";
 import {
   getStoredTranscriptionTasks,
@@ -75,11 +79,11 @@ interface TranscriptionTask {
     text: string;
     word_count: number;
     segment_count?: number;
-    language: string;
-    duration_seconds?: number;
-    engine_used?: string;
-    language_detected?: string;
-    detection_method?: string;
+    language: string | null;
+    duration_seconds?: number | null;
+    engine_used?: string | null;
+    language_detected?: string | null;
+    detection_method?: string | null;
   } | null;
   error: string | null;
   errorCategory: string | null;
@@ -108,10 +112,40 @@ export default function LibraryPage() {
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transcriptionTasks, setTranscriptionTasks] = useState<Record<string, TranscriptionTask>>({});
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerTask, setViewerTask] = useState<TranscriptionTask | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploadRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (audio?: File) => {
+    if (!audio) return;
+    if (audio.size > 50 * 1024 * 1024) { setError("音频不能超过 50 MB"); return; }
+    setUploading(true);
+    setError("");
+    try {
+      const response = await uploadAudio(audio);
+      const library = await getLibraryFiles();
+      const file = library.files.find((item) => item.type === "audio" && item.name.startsWith(response.task_id));
+      if (file) {
+        const task: TranscriptionTask = {
+          fileId: file.id, taskId: response.task_id, status: "processing", progress: 0,
+          result: null, error: null, errorCategory: null, estimate: response.estimate,
+          elapsedSeconds: null, remainingSeconds: response.estimate?.total_seconds ?? null,
+        };
+        setTranscriptionTasks((prev) => ({...prev, [file.id]: task}));
+        saveTranscriptionTask(task);
+      }
+      setFiles(library.files);
+      setTypeCounts(library.type_counts);
+      setActiveTab("all");
+      setSearchQuery("");
+      setTimeRange("all");
+    } catch (err) { setError(err instanceof Error ? err.message : "上传失败，请重试"); }
+    finally { setUploading(false); if (uploadRef.current) uploadRef.current.value = ""; }
+  };
 
   // Load persisted transcription tasks on mount
   useEffect(() => {
@@ -197,11 +231,15 @@ export default function LibraryPage() {
       (t) => t.status === "processing" || t.status === "pending"
     );
     if (activeTasks.length === 0) return;
-
+    let active = true;
+    let polling = false;
     const interval = setInterval(async () => {
+      if (polling) return;
+      polling = true;
       for (const task of activeTasks) {
         try {
           const status = await getTranscriptionStatus(task.taskId);
+          if (!active) break;
           const updatedTask = {
             ...task,
             status: status.status,
@@ -211,6 +249,7 @@ export default function LibraryPage() {
             error: status.error,
             errorCategory: status.error_category,
             errorDetail: status.error_detail,
+            estimate: status.estimate,
             elapsedSeconds: status.elapsed_seconds,
             remainingSeconds: status.remaining_seconds,
           };
@@ -228,12 +267,18 @@ export default function LibraryPage() {
             fetchFiles();
           }
         } catch (err) {
-          console.error(`Failed to poll transcription ${task.taskId}:`, err);
+          if (!active) break;
+          if (err instanceof ApiError && err.status === 404) {
+            const failed = {...task, status: "failed", error: "任务已过期，请重新转录", errorCategory: "task_expired"};
+            setTranscriptionTasks((prev) => ({...prev, [task.fileId]: failed}));
+            updateTranscriptionTask(task.fileId, failed);
+          } else { setError("暂时无法获取转录状态，连接恢复后将自动重试"); }
         }
       }
+      polling = false;
     }, 2000);
 
-    return () => clearInterval(interval);
+    return () => { active = false; clearInterval(interval); };
   }, [transcriptionTasks, fetchFiles]);
 
   const formatDate = (iso: string) => {
@@ -309,18 +354,25 @@ export default function LibraryPage() {
     }
   };
 
+  const handleDeleteFile = async (file: LibraryFile) => {
+    if (deletingId === file.id) return;
+    if (!confirm(`确定删除「${file.name}」吗？此操作不可恢复。`)) return;
+    setDeletingId(file.id);
+    try {
+      await deleteLibraryFile(file.file_path);
+      await fetchFiles();
+    } catch (err: any) {
+      alert(`删除失败: ${err.message || "未知错误"}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleOpenLocation = async (file: LibraryFile) => {
     setOpeningId(file.id);
     try {
-      const res = await fetch(`/api/library/open-file`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file_path: file.file_path }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "打开失败");
-      }
+      const res = await openLibraryLocation(file.file_path);
+      if (!res.success) alert(res.message);
     } catch (err: any) {
       alert(`打开失败: ${err.message || "未知错误"}`);
     } finally {
@@ -343,7 +395,7 @@ export default function LibraryPage() {
         result: null,
         error: null,
         errorCategory: null,
-        estimate: response.estimate ?? null,
+        estimate: response.estimate,
         elapsedSeconds: null,
         remainingSeconds: response.estimate?.total_seconds ?? null,
       };
@@ -387,6 +439,26 @@ export default function LibraryPage() {
     }
   };
 
+  const autoTranscribeHandledRef = useRef(false);
+
+  /* 支持 ?transcribe_path=xxx 参数：从下载完成通知跳转后自动触发转录 */
+  useEffect(() => {
+    if (autoTranscribeHandledRef.current) return;
+    const transcribePath = new URLSearchParams(window.location.search).get("transcribe_path");
+    if (!transcribePath) return;
+    if (loading) return;
+    autoTranscribeHandledRef.current = true;
+    window.history.replaceState({}, "", window.location.pathname);
+
+    const targetFile = files.find((f) => f.file_path === transcribePath);
+    if (targetFile) {
+      handleTranscribe(targetFile);
+    } else {
+      alert("未在文件库中找到该音频文件，请刷新文件库后手动点击对应文件的转录按钮。");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, loading]);
+
   const handleRetryTranscription = async (fileId: string) => {
     const file = files.find((f) => f.id === fileId);
     if (!file) return;
@@ -396,8 +468,7 @@ export default function LibraryPage() {
   const handleUseTranscript = (task: TranscriptionTask) => {
     if (!task.result?.text) return;
     // Navigate to create page with transcript text
-    const encodedText = encodeURIComponent(task.result.text);
-    window.location.href = `/dashboard/create?transcript=${encodedText}`;
+    window.location.href = `/dashboard/create?transcript_task=${encodeURIComponent(task.taskId)}`;
   };
 
   const handleViewTranscript = (task: TranscriptionTask) => {
@@ -444,6 +515,10 @@ export default function LibraryPage() {
         </p>
 
         {/* Stats */}
+        <div className="mb-4 flex justify-end">
+          <input ref={uploadRef} type="file" accept=".mp3,.m4a,.aac,.ogg,.wav,.flac,.wma,.opus" aria-label="选择音频文件" className="hidden" onChange={(event) => void handleUpload(event.target.files?.[0])} />
+          <button disabled={uploading} onClick={() => uploadRef.current?.click()} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black disabled:opacity-50">{uploading ? "上传中..." : "上传音频"}</button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {tabs.map((tab) => (
             <button
@@ -566,16 +641,16 @@ export default function LibraryPage() {
                       transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.3 }}
                       className="bg-[#0c0c0e]/70 border border-gray-900 rounded-2xl p-4 backdrop-blur-md hover:border-gray-800 transition group"
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-wrap items-center gap-4 sm:flex-nowrap">
                         <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center flex-shrink-0`}>
                           <TypeIcon className={`w-5 h-5 ${config.color}`} />
                         </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1 basis-[calc(100%-56px)] sm:basis-0">
                           <h3 className="text-sm font-medium text-white truncate">
                             {file.episode_title}
                           </h3>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-gray-600">
                             <span>{file.podcast_name}</span>
                             <span className="flex items-center gap-1">
                               <HardDrive className="w-3 h-3" />
@@ -588,7 +663,7 @@ export default function LibraryPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition">
                           {/* Transcribe button for audio files */}
                           {isAudio && !task && (
                             <button
@@ -633,8 +708,14 @@ export default function LibraryPage() {
                           <button
                             className="p-2 rounded-xl bg-white/5 hover:bg-red-500/10 transition"
                             title="删除"
+                            onClick={() => handleDeleteFile(file)}
+                            disabled={deletingId === file.id}
                           >
-                            <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400" />
+                            {deletingId === file.id ? (
+                              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -832,12 +913,12 @@ export default function LibraryPage() {
         onClose={handleCloseViewer}
         title={files.find(f => f.id === viewerTask?.fileId)?.episode_title || "转录文本"}
         text={viewerTask?.result?.text || ""}
-        fileId={viewerTask?.fileId}
+        fileId={viewerTask?.taskId.startsWith("file_") ? viewerTask.taskId.slice(5) : viewerTask?.fileId}
         metadata={viewerTask?.result ? {
           word_count: viewerTask.result.word_count,
-          language: viewerTask.result.language,
-          engine_used: viewerTask.result.engine_used,
-          duration_seconds: viewerTask.result.duration_seconds,
+          language: viewerTask.result.language || undefined,
+          engine_used: viewerTask.result.engine_used || undefined,
+          duration_seconds: viewerTask.result.duration_seconds || undefined,
         } : null}
       />
     </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, WifiOff } from "lucide-react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function DevBanner() {
   const [backendStatus, setBackendStatus] = useState<"checking" | "connected" | "disconnected">("checking");
@@ -37,7 +37,7 @@ export default function DevBanner() {
         <div>
           <p className="text-xs text-emerald-400 font-medium">服务已连接</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            后端服务运行正常，所有功能可用
+            后端已连接；转录与笔记生成仍需相应模型和服务配置。
           </p>
         </div>
       </div>
@@ -51,7 +51,7 @@ export default function DevBanner() {
         <div>
           <p className="text-xs text-red-400 font-medium">服务未连接</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            后端服务未运行，请启动后端服务: <code className="bg-white/5 px-1.5 py-0.5 rounded text-gray-400">python -m uvicorn backend.main:app --port 8001</code>
+            无法连接后端，请检查服务与网络配置后重试。
           </p>
         </div>
       </div>

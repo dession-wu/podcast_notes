@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Image, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Image, FileText } from "lucide-react";
 import DevBanner from "@/components/DevBanner";
 import ContentProcessor from "./ContentProcessor";
 import ImageGenerator from "./ImageGenerator";
@@ -14,6 +14,11 @@ const tabs = [
 
 export default function CreatePage() {
   const [activeTab, setActiveTab] = useState("note");
+  useEffect(() => {
+    // Initial tab comes from the browser URL after static-page hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (new URLSearchParams(window.location.search).get("tab") === "image") setActiveTab("image");
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -47,9 +52,9 @@ export default function CreatePage() {
         </div>
 
         {/* Content */}
-        <AnimatePresence mode="wait">
-          {activeTab === "note" ? (
+        <>
             <motion.div
+              hidden={activeTab !== "note"}
               key="note"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -58,8 +63,8 @@ export default function CreatePage() {
             >
               <ContentProcessor />
             </motion.div>
-          ) : (
             <motion.div
+              hidden={activeTab !== "image"}
               key="image"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -68,8 +73,7 @@ export default function CreatePage() {
             >
               <ImageGenerator />
             </motion.div>
-          )}
-        </AnimatePresence>
+        </>
       </motion.div>
     </div>
   );

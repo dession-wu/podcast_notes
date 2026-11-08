@@ -47,7 +47,6 @@ function ShellInner({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [currentMatch, setCurrentMatch] = useState(0);
-  const [totalMatches, setTotalMatches] = useState(0);
   const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [transcriptContainer, setTranscriptContainer] = useState<HTMLDivElement | null>(null);
@@ -112,17 +111,14 @@ function ShellInner({
     return /^\[\d{1,2}:\d{2}/m.test(content);
   }, [content]);
 
-  useEffect(() => {
+  const totalMatches = useMemo(() => {
     if (!searchKeyword.trim()) {
-      setTotalMatches(0);
-      setCurrentMatch(0);
-      return;
+      return 0;
     }
     const regex = new RegExp(searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
     const matches = content.match(regex);
     const count = matches ? matches.length : 0;
-    setTotalMatches(count);
-    setCurrentMatch(0);
+    return count;
   }, [searchKeyword, content]);
 
   const handleSearchNavigate = useCallback(
@@ -137,7 +133,7 @@ function ShellInner({
         marks[index].scrollIntoView({ behavior: "smooth", block: "center" });
       }
     },
-    [searchKeyword]
+    [searchKeyword, transcriptContainer]
   );
 
   const handleSearchNavigateById = useCallback(
@@ -274,7 +270,7 @@ function ShellInner({
                 totalMatches={totalMatches}
                 currentMatch={currentMatch}
                 onMatchChange={handleSearchNavigate}
-                onKeywordChange={setSearchKeyword}
+                onKeywordChange={(keyword) => { setSearchKeyword(keyword); setCurrentMatch(0); }}
               />
             )}
 

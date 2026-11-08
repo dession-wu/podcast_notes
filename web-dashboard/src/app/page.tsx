@@ -1,398 +1,85 @@
-"use client";
+import type { Metadata } from "next";
+import Image from "next/image";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Mic, ArrowRight, User, Lock, Mail, Loader2 } from "lucide-react";
-import WaveCanvas from "@/components/WaveCanvas";
+import { ArrowDown, ArrowRight, AudioLines, BookOpen, Check, FileText, Headphones, Mic, PenLine } from "lucide-react";
+import OutputPreview from "@/components/landing/OutputPreview";
+import styles from "@/components/landing/landing.module.css";
 
-interface FormErrors {
-  username?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-}
+export const metadata: Metadata = {
+  title: "播客手账 · 让听过的好内容留下来",
+  description: "为播客听众、知识整理者和内容创作者，将播客音频整理成带时间戳的转录、结构化笔记和图文素材。AI 出草稿，你来核对与表达。",
+};
+
+const audiences = [
+  { icon: Headphones, title: "给认真听播客的你", description: "听到有启发的内容，留下全文和观点笔记。想起一个话题时，有据可查。", result: "从「听过」到「留下来」" },
+  { icon: BookOpen, title: "给习惯整理知识的你", description: "把长对话拆成清晰的主题、要点和思考，让零散输入成为可回看的资料。", result: "从零散信息到知识线索" },
+  { icon: PenLine, title: "给持续创作内容的你", description: "从播客中寻找选题与表达素材，用文字和图文模板整理草稿，再加入自己的判断。", result: "从内容素材到创作起点" },
+];
+
+const steps = [
+  { number: "01", title: "找到一段值得留下的声音", description: "搜索播客、通过 RSS 或音频直链获取素材，也可以从已有音频开始。", detail: "音频与素材库" },
+  { number: "02", title: "把长对话，整理成清晰的内容", description: "先完成语音转写，再按内容选择笔记模板，提炼观点、关键内容与思考线索。", detail: "转录与 AI 笔记" },
+  { number: "03", title: "核对之后，留下你的表达", description: "对照转录阅读、校对笔记，下载文字或图文素材，供后续学习与创作使用。", detail: "核对与下载" },
+];
+
+const examples = [
+  { image: "minimal-content.png", name: "极简知识感", description: "让观点和重点，成为阅读的主角。", alt: "原项目极简模板示例：白底、琥珀色重点和条目化观点" },
+  { image: "vibrant-content.png", name: "活力社交感", description: "更鲜明的色彩，更轻松的阅读节奏。", alt: "原项目活力模板示例：粉紫色调的观点图文" },
+  { image: "editorial-cover.png", name: "高级杂志感", description: "用克制的排版，呈现值得深读的主题。", alt: "原项目杂志模板示例：大标题、网格和红色点缀的封面" },
+];
+
+const questions = [
+  { title: "它更适合用来学习，还是创作内容？", answer: "两者都可以。播客听众可以保留可检索的转录和笔记；知识整理者可以提炼观点与思考；内容创作者可以将它作为选题和图文草稿的整理工具。最终如何取舍和表达，由你决定。" },
+  { title: "我会得到哪些形式的内容？", answer: "项目提供转录阅读、文字笔记和图文生成能力。文字内容可按功能导出为 TXT、Markdown 或 JSON，图文可下载为 PNG；部分下载流程支持 ZIP 打包。具体输出取决于所选模板与处理结果。" },
+  { title: "生成的笔记，可以直接发布吗？", answer: "建议先核对。语音识别可能出现错字，AI 提炼也可能遗漏上下文。请对照原文校对，补充自己的表达，并确认原播客与素材的使用授权、注明来源后再分享。这里不承诺自动发布或内容完全准确。" },
+  { title: "开始使用前，需要准备什么？", answer: "注册个人账号后，配置自己的 DeepSeek 或 OpenAI Key。音频转写还需 ElevenLabs Key；播客搜索可选配 PodcastIndex。也可以通过 RSS 或音频直链导入，处理完成后核对并下载。" },
+];
 
 export default function LandingPage() {
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [errors, setErrors] = useState<FormErrors>({});
-
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (mode === "register") {
-      if (!formData.username.trim()) {
-        newErrors.username = "请输入用户名";
-      } else if (formData.username.trim().length < 2) {
-        newErrors.username = "用户名至少2位";
-      }
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "请输入邮箱";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "邮箱格式不正确";
-    }
-
-    if (!formData.password) {
-      newErrors.password = "请输入密码";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "密码至少6位";
-    }
-
-    if (mode === "register") {
-      if (!formData.confirmPassword) {
-        newErrors.confirmPassword = "请确认密码";
-      } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "两次密码不一致";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // 清除对应字段错误
-    if (errors[field as keyof FormErrors]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
-    setFormError("");
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-    setFormError("");
-
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // 模拟登录/注册成功
-    localStorage.setItem("auth_token", "dev");
-    window.location.href = "/dashboard";
-  };
-
-  const switchMode = () => {
-    setMode((prev) => (prev === "login" ? "register" : "login"));
-    setErrors({});
-    setFormError("");
-    setFormData({
-      username: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    });
-  };
-
   return (
-    <div className="relative min-h-screen bg-[#030305] overflow-hidden font-sans">
-      {/* Wave Canvas Background */}
-      <WaveCanvas />
+    <div className={styles.landing}>
+      <a href="#main" className={styles.skip}>跳到主要内容</a>
+      <header className={`${styles.header} ${styles.container}`}>
+        <a href="/" className={styles.brand} aria-label="播客手账首页"><img src="/brand/icon.svg?v=20261103-brand1" width={34} height={34} alt="" className={styles.brandIcon} /><span>播客手账<small>PODCAST JOURNAL</small></span></a>
+        <nav aria-label="首页导航" className={styles.navigation}><a href="#features">适合谁用</a><a href="#workflow">如何使用</a><a href="#examples">输出示例</a></nav>
+        <a href="/login" className={styles.headerLogin}>登录 <ArrowRight size={15} aria-hidden="true" /></a>
+      </header>
 
-      {/* Content Layer */}
-      <div className="relative z-10 w-full min-h-screen flex flex-col justify-between p-6 md:p-8">
-        {/* Header */}
-        <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full flex justify-between items-center"
-        >
-          <div className="flex items-center space-x-2">
-            <div className="w-5 h-5 bg-white flex items-center justify-center rounded-[3px]">
-              <Mic className="text-[#030305] text-[10px] w-3 h-3" />
-            </div>
-            <span className="text-white font-semibold text-sm tracking-wider font-mono">
-              PODCAST NOTES
-            </span>
+      <main id="main">
+        <section className={`${styles.hero} ${styles.container}`} aria-labelledby="hero-title">
+          <div className={styles.heroCopy}>
+            <h1 id="hero-title">好内容，值得留下。</h1>
+            <p className={styles.heroDescription}>把播客里的声音，整理成可检索的转录、可回看的笔记，和可二次创作的图文素材。</p>
+            <div className={styles.heroActions}><a href="/register" className={styles.primary}>注册，开始整理 <ArrowRight size={17} aria-hidden="true" /></a><a href="#workflow" className={styles.secondary}>了解使用流程 <ArrowDown size={15} aria-hidden="true" /></a></div>
+            <p className={styles.heroNote}>AI 帮你整理草稿，内容由你核对与定稿。</p>
+            <div className={styles.inputOutput}><AudioLines size={18} aria-hidden="true" /><span>一段音频</span><ArrowRight size={14} aria-hidden="true" /><span>转录 · 笔记 · 图文</span></div>
           </div>
-          <div className="flex items-center space-x-4 text-[10px] text-gray-500 font-mono">
-            <span>SYS_STATUS: ACTIVE</span>
-            <span className="text-white/40">|</span>
-            <button className="hover:text-white transition-colors cursor-pointer">
-              中文 (ZH)
-            </button>
-          </div>
-        </motion.header>
+          <OutputPreview />
+        </section>
 
-        {/* Main Content */}
-        <main className="w-full max-w-7xl mx-auto my-auto grid grid-cols-1 md:grid-cols-12 items-center gap-8">
-          {/* Left Side - Project Intro */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="hidden md:block md:col-span-7 pr-12"
-          >
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono font-semibold">
-                AI-Powered Podcast Intelligence
-              </p>
-              <h2 className="text-3xl text-white font-light tracking-tight leading-tight max-w-md">
-                从播客中提取洞察，让内容创作更简单
-              </h2>
-            </div>
-          </motion.div>
+        <section id="features" className={`${styles.section} ${styles.container}`} aria-labelledby="audience-title">
+          <div className={styles.sectionHeading}><h2 id="audience-title">听完之后，留下自己的思考。</h2><p>无论是留给自己，还是整理后分享，从一段值得回味的内容开始。</p></div>
+          <div className={styles.audiences}>{audiences.map(({ icon: Icon, title, description, result }) => <article key={title}><Icon size={24} strokeWidth={1.5} aria-hidden="true" /><h3>{title}</h3><p>{description}</p><span>{result}</span></article>)}</div>
+        </section>
 
-          {/* Right Side - Auth Card */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="flex justify-center md:justify-end md:col-span-5"
-          >
-            <div className="w-full max-w-[390px] bg-[#09090d]/80 border border-white/[0.06] rounded-2xl p-8 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.8)]">
-              {/* Badge & Title */}
-              <div className="mb-6">
-                <div className="inline-block bg-white/[0.04] border border-white/10 px-2 py-0.5 rounded-[4px]">
-                  <span className="text-[9px] font-mono uppercase tracking-widest text-gray-400 font-medium">
-                    Uplink Gateway
-                  </span>
-                </div>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={mode}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <h3 className="text-xl font-medium text-white mt-3 tracking-tight">
-                      {mode === "login" ? "登录 / Authenticate" : "注册 / Register"}
-                    </h3>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {mode === "login"
-                        ? "输入您的账号信息登录系统"
-                        : "创建新账户开始使用"}
-                    </p>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
+        <section id="workflow" className={styles.workflow} aria-labelledby="workflow-title"><div className={styles.container}>
+          <div className={styles.sectionHeading}><h2 id="workflow-title">从声音到笔记，理清每个好想法。</h2><p>转写、提炼、核对与导出，围绕同一份内容，逐步完成。</p></div>
+          <ol className={styles.steps}>{steps.map(step => <li key={step.number}><span className={styles.stepNumber}>{step.number}</span><h3>{step.title}</h3><p>{step.description}</p><span className={styles.stepDetail}><Check size={14} aria-hidden="true" />{step.detail}</span></li>)}</ol>
+        </div></section>
 
-              {/* Form Error */}
-              <AnimatePresence>
-                {formError && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl"
-                  >
-                    <p className="text-xs text-red-400">{formError}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        <section id="examples" className={`${styles.section} ${styles.container}`} aria-labelledby="examples-title">
+          <div className={styles.sectionHeading}><h2 id="examples-title">让好内容，清晰呈现。</h2><p>文字笔记之外，也能整理成适合分享的图文。以下为项目自带的模板示例，点击可查看大图。</p></div>
+          <div className={styles.gallery}>{examples.map(example => <figure key={example.name}><a className={styles.imageLink} href={`/landing/${example.image}`} target="_blank" rel="noopener noreferrer" aria-label={`查看${example.name}模板大图（新窗口）`}><picture><source srcSet={`/landing/${example.image}.webp`} type="image/webp" /><Image src={`/landing/${example.image}`} alt={example.alt} width={900} height={1200} sizes="(max-width: 640px) 85vw, (max-width: 1000px) 44vw, 350px" unoptimized /></picture></a><figcaption><h3>{example.name}</h3><p>{example.description}</p></figcaption></figure>)}</div>
+          <div className={styles.exportNote}><FileText size={17} aria-hidden="true" /><p>保留可编辑的文字，也保留方便分享的图片。<span>文字导出 / PNG 图文 / 部分流程支持 ZIP 打包</span></p></div>
+        </section>
 
-              {/* Form */}
-              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={mode}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4"
-                  >
-                    {/* Username (register only) */}
-                    {mode === "register" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1.5 font-mono font-medium">
-                          用户名 / Username
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-3.5 text-gray-600 text-xs">
-                            <User className="w-3.5 h-3.5" />
-                          </span>
-                          <input
-                            type="text"
-                            value={formData.username}
-                            onChange={(e) => handleChange("username", e.target.value)}
-                            placeholder="输入您的用户名"
-                            className={`w-full bg-[#111116] border ${
-                              errors.username ? "border-red-500/50" : "border-white/[0.05]"
-                            } focus:border-white/20 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none transition-all`}
-                          />
-                        </div>
-                        {errors.username && (
-                          <p className="text-[10px] text-red-400 mt-1">{errors.username}</p>
-                        )}
-                      </motion.div>
-                    )}
+        <section className={`${styles.faqSection} ${styles.container}`} aria-labelledby="faq-title"><div><h2 id="faq-title">开始之前，你可能想知道。</h2><p>工具负责辅助整理，内容判断始终在你手中。</p></div><div className={styles.questions}>{questions.map(question => <details key={question.title}><summary>{question.title}<span aria-hidden="true">+</span></summary><p>{question.answer}</p></details>)}</div></section>
 
-                    {/* Email */}
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1.5 font-mono font-medium">
-                        邮箱 / Email
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-3.5 text-gray-600 text-xs">
-                          <Mail className="w-3.5 h-3.5" />
-                        </span>
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => handleChange("email", e.target.value)}
-                          placeholder="user@domain.net"
-                          className={`w-full bg-[#111116] border ${
-                            errors.email ? "border-red-500/50" : "border-white/[0.05]"
-                          } focus:border-white/20 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none transition-all`}
-                        />
-                      </div>
-                      {errors.email && (
-                        <p className="text-[10px] text-red-400 mt-1">{errors.email}</p>
-                      )}
-                    </div>
+        <section className={`${styles.closing} ${styles.container}`} aria-labelledby="closing-title"><AudioLines size={34} strokeWidth={1.4} aria-hidden="true" /><h2 id="closing-title">下一期播客，留下一份好笔记。</h2><p>留下观点，整理思路，再用自己的方式表达。</p><a href="/register" className={styles.primary}>注册，创建第一份笔记 <ArrowRight size={17} aria-hidden="true" /></a></section>
+      </main>
 
-                    {/* Password */}
-                    <div>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-mono font-medium">
-                          密码 / Password
-                        </label>
-                        {mode === "login" && (
-                          <a
-                            href="#"
-                            className="text-[10px] text-gray-500 hover:text-white transition-colors"
-                          >
-                            忘记密码？
-                          </a>
-                        )}
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-4 top-3.5 text-gray-600 text-xs">
-                          <Lock className="w-3.5 h-3.5" />
-                        </span>
-                        <input
-                          type="password"
-                          value={formData.password}
-                          onChange={(e) => handleChange("password", e.target.value)}
-                          placeholder="••••••••••••"
-                          className={`w-full bg-[#111116] border ${
-                            errors.password ? "border-red-500/50" : "border-white/[0.05]"
-                          } focus:border-white/20 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none transition-all`}
-                        />
-                      </div>
-                      {errors.password && (
-                        <p className="text-[10px] text-red-400 mt-1">{errors.password}</p>
-                      )}
-                    </div>
-
-                    {/* Confirm Password (register only) */}
-                    {mode === "register" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        <label className="block text-[10px] uppercase tracking-widest text-gray-400 mb-1.5 font-mono font-medium">
-                          确认密码 / Confirm
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-3.5 text-gray-600 text-xs">
-                            <Lock className="w-3.5 h-3.5" />
-                          </span>
-                          <input
-                            type="password"
-                            value={formData.confirmPassword}
-                            onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                            placeholder="••••••••••••"
-                            className={`w-full bg-[#111116] border ${
-                              errors.confirmPassword ? "border-red-500/50" : "border-white/[0.05]"
-                            } focus:border-white/20 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none transition-all`}
-                          />
-                        </div>
-                        {errors.confirmPassword && (
-                          <p className="text-[10px] text-red-400 mt-1">
-                            {errors.confirmPassword}
-                          </p>
-                        )}
-                      </motion.div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="w-full mt-6 bg-white hover:bg-gray-100 text-black font-semibold text-xs uppercase tracking-widest py-3.5 rounded-full flex items-center justify-center space-x-2 transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>处理中...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>
-                        {mode === "login"
-                          ? "进入控制台 / Initialize Console"
-                          : "创建账户 / Create Account"}
-                      </span>
-                      <ArrowRight className="w-3 h-3" />
-                    </>
-                  )}
-                </button>
-              </form>
-
-              {/* Mode Switch */}
-              <div className="mt-6 pt-4 border-t border-white/[0.04] text-center">
-                <p className="text-xs text-gray-500">
-                  {mode === "login" ? (
-                    <>
-                      还没有账号？
-                      <button
-                        onClick={switchMode}
-                        className="text-white hover:underline underline-offset-4 ml-1 font-medium cursor-pointer"
-                      >
-                        立即注册 →
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      已有账号？
-                      <button
-                        onClick={switchMode}
-                        className="text-white hover:underline underline-offset-4 ml-1 font-medium cursor-pointer"
-                      >
-                        立即登录 →
-                      </button>
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </main>
-
-        {/* Footer */}
-        <motion.footer
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className="w-full flex justify-between items-center text-[9px] text-gray-600 font-mono tracking-widest"
-        >
-          <div>© 2026 PODCAST NOTES. ALL RIGHTS RESERVED.</div>
-          <div className="hidden md:block">SECURE_SSL_ENCRYPTED</div>
-        </motion.footer>
-      </div>
+      <footer className={`${styles.footer} ${styles.container}`}><div className={styles.footerBrand}><img src="/brand/icon.svg?v=20261103-brand1" width={24} height={24} alt="" />播客手账<span>听见，理解，留下。</span></div><div><a href="#workflow">使用流程</a><a href="#examples">模板示例</a><a href="/login">进入控制台</a></div><small>© 2026 播客手账</small></footer>
     </div>
   );
 }
+

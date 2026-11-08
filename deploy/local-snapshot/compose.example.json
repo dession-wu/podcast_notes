@@ -1,0 +1,99 @@
+{
+  "name": "local-podcast-notes",
+  "networks": {
+    "default": {
+      "name": "podcast_notes_default",
+      "ipam": {}
+    }
+  },
+  "services": {
+    "backend": {
+      "restart": "unless-stopped",
+      "command": null,
+      "entrypoint": null,
+      "environment": {
+        "DATA_DIR": "/app/data",
+        "PODCAST_NOTES_ALLOW_ANONYMOUS": "false",
+        "PODCAST_NOTES_API_KEY": "${PODCAST_NOTES_API_KEY}",
+        "TZ": "Asia/Shanghai"
+      },
+      "networks": {
+        "default": null
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "podcast_data",
+          "target": "/app/data",
+          "volume": {}
+        }
+      ],
+      "build": {
+        "context": "../..",
+        "dockerfile": "Dockerfile.local"
+      },
+      "expose": [
+        "8000"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://127.0.0.1:8000/api/health/"
+        ],
+        "timeout": "10s",
+        "interval": "30s",
+        "retries": 3,
+        "start_period": "25s"
+      }
+    },
+    "frontend": {
+      "restart": "unless-stopped",
+      "command": null,
+      "entrypoint": null,
+      "networks": {
+        "default": null
+      },
+      "build": {
+        "context": "../../web-dashboard",
+        "dockerfile": "Dockerfile.local",
+        "args": {
+          "NEXT_PUBLIC_API_KEY": ""
+        }
+      },
+      "depends_on": {
+        "backend": {
+          "condition": "service_healthy",
+          "required": true
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://127.0.0.1:80/"
+        ],
+        "timeout": "5s",
+        "interval": "30s",
+        "retries": 3
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 80,
+          "published": "8183",
+          "protocol": "tcp",
+          "host_ip": "127.0.0.1"
+        }
+      ]
+    }
+  },
+  "volumes": {
+    "podcast_data": {
+      "name": "podcast_notes_podcast_data"
+    }
+  }
+}

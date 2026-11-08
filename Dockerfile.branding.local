@@ -1,0 +1,2 @@
+FROM local-podcast-notes-backend:before-branding
+COPY backend/web_accounts.py /app/backend/web_accounts.py

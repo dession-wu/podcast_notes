@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.config.download_settings import download_settings_manager
+from config import settings
 from utils import get_logger
 
 logger = get_logger(__name__)
@@ -41,10 +42,16 @@ class LibraryFilesResponse(BaseModel):
     type_counts: dict[str, int]
 
 
-def _get_data_dir() -> Path:
-    """Get the effective data directory."""
-    ds = download_settings_manager.load()
-    return ds.get_effective_download_dir().parent
+def _library_directories() -> dict[str, list[Path]]:
+    """Download overrides affect audio only, never transcripts or generated images."""
+    return {
+        "audio": list(dict.fromkeys([
+            download_settings_manager.load().get_effective_download_dir().resolve(),
+            settings.audio_download_dir.resolve(),
+        ])),
+        "transcript": [settings.transcript_dir.resolve()],
+        "image": [settings.output_dir / "images", settings.data_dir / "images"],
+    }
 
 
 def _scan_directory(
@@ -69,10 +76,18 @@ def _scan_directory(
         range_cutoff = now - timedelta(days=30)
 
     for entry in directory.iterdir():
-        if not entry.is_file():
+        extensions = {
+            "audio": {".mp3", ".mp4", ".m4a", ".wav", ".ogg", ".flac", ".aac", ".opus", ".webm"},
+            "transcript": {".txt", ".md"},
+            "image": {".png", ".jpg", ".jpeg", ".webp"},
+        }
+        if entry.suffix.lower() not in extensions[file_type] or not entry.is_file():
             continue
 
-        stat = entry.stat()
+        try:
+            stat = entry.stat()
+        except FileNotFoundError:
+            continue
         created_dt = datetime.fromtimestamp(stat.st_mtime)
 
         if range_cutoff and created_dt < range_cutoff:
@@ -127,18 +142,13 @@ async def get_library_files(
     time_range: str = Query("all", description="Time range: all, today, week, month"),
 ):
     """Get unified library files with filtering and sorting."""
-    data_dir = _get_data_dir()
-
-    type_dirs = {
-        "audio": data_dir / "audio",
-        "transcript": data_dir / "transcripts",
-        "image": data_dir / "images",
-    }
+    type_dirs = _library_directories()
 
     # Always scan ALL directories for accurate type_counts
     all_files_for_counts: list[LibraryFile] = []
-    for ft, dir_path in type_dirs.items():
-        all_files_for_counts.extend(_scan_directory(dir_path, ft, search, time_range))
+    for ft, directories in type_dirs.items():
+        for dir_path in directories:
+            all_files_for_counts.extend(_scan_directory(dir_path, ft, search, time_range))
 
     # Calculate type_counts from complete scan
     type_counts = {"audio": 0, "transcript": 0, "image": 0}
@@ -200,13 +210,17 @@ async def open_file_location(request: OpenFileRequest):
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="文件不存在")
+    if not _is_deletable_library_path(file_path):
+        raise HTTPException(status_code=403, detail="路径不在文件库允许范围内")
+    if platform.system() == "Linux" and not os.environ.get("DISPLAY"):
+        return OpenFileResponse(success=False, message=f"云服务器没有桌面文件夹窗口。文件位于服务器：{file_path}")
 
     try:
         system = platform.system()
 
         if system == "Windows":
-            cmd = f'explorer /select,"{str(file_path)}"'
-            subprocess.Popen(cmd, shell=True)
+            # 参数列表传递（shell=False），路径中的特殊字符不会被 shell 解释
+            subprocess.Popen(["explorer", f"/select,{str(file_path)}"])
         elif system == "Darwin":
             subprocess.Popen(["open", "-R", str(file_path)])
         elif system == "Linux":
@@ -227,15 +241,14 @@ async def open_file_location(request: OpenFileRequest):
 @router.get("/transcript-content/{file_id}", response_model=TranscriptContentResponse)
 async def get_transcript_content(file_id: str):
     """读取转录文件（.md 或 .txt）的文本内容。"""
-    data_dir = _get_data_dir()
-    transcripts_dir = data_dir / "transcripts"
+    transcripts_dir = settings.transcript_dir
 
     if not transcripts_dir.exists():
         raise HTTPException(status_code=404, detail="Transcripts directory not found")
 
     # 查找匹配的文件（file_id 格式: transcript_{stem}_{mtime}）
     for entry in transcripts_dir.iterdir():
-        if entry.is_file():
+        if entry.is_file() and entry.suffix.lower() in {".txt", ".md"}:
             stat = entry.stat()
             entry_id = f"transcript_{entry.stem}_{stat.st_mtime}"
             if entry_id == file_id:
@@ -252,3 +265,63 @@ async def get_transcript_content(file_id: str):
                     raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
     raise HTTPException(status_code=404, detail="Transcript file not found")
+
+
+class DeleteFileRequest(BaseModel):
+    """Delete library file request."""
+
+    file_path: str
+
+
+class DeleteFileResponse(BaseModel):
+    """Delete library file response."""
+
+    success: bool
+    message: str
+    file_name: str
+
+
+def _is_deletable_library_path(file_path: Path) -> bool:
+    """校验待删除路径是否位于允许范围内.
+
+    音频目录复用 security.is_path_allowed 白名单（含用户自定义下载目录）；
+    转录/图片目录不在该白名单内，按 library 自身目录结构补充校验。
+    两者均为 resolve 后的前缀校验，拒绝目录穿越。
+    """
+    try:
+        resolved = file_path.resolve()
+    except (OSError, RuntimeError):
+        return False
+
+    for directories in _library_directories().values():
+        for directory in directories:
+            root = directory.resolve()
+            if resolved.parent == root:
+                return True
+    return False
+
+
+@router.delete("/files", response_model=DeleteFileResponse)
+async def delete_library_file(request: DeleteFileRequest):
+    """删除文件库中的单个文件（音频/转录/图片）。"""
+    file_path = Path(request.file_path).expanduser()
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="文件不存在或已被删除")
+
+    if not _is_deletable_library_path(file_path):
+        raise HTTPException(status_code=403, detail="路径不在文件库允许范围内，拒绝删除")
+
+    try:
+        file_path.resolve().unlink()
+        logger.info("删除文件库文件", file_path=str(file_path))
+        return DeleteFileResponse(
+            success=True,
+            message="删除成功",
+            file_name=file_path.name,
+        )
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="权限不足，无法删除该文件")
+    except OSError as e:
+        logger.error("删除文件失败", error=str(e), file_path=str(file_path))
+        raise HTTPException(status_code=500, detail=f"删除文件失败: {e}")

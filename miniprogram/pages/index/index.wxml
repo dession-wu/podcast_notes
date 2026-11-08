@@ -1,0 +1,18 @@
+<view class="container home-page">
+  <view class="edition"><view class="edition-mark"></view><text>播客转文字 · 留下值得重读的声音</text></view>
+  <view class="title home-title"><view>听过的，</view><view>再读一遍。</view></view>
+  <view class="subtitle home-subtitle"><view>从一期播客开始，</view><view>留一份可以慢慢读的文字。</view></view>
+  <view class="search-field home-search"><view class="search-icon"></view><input value="{{query}}" bindinput="input" bindconfirm="search" placeholder="搜索播客名称" maxlength="80" confirm-type="search" disabled="{{loading}}" /><button class="clear-button" wx:if="{{query}}" bindtap="clear" disabled="{{loading}}" aria-label="清空播客名称">清空</button><button class="primary search-submit" bindtap="search" loading="{{loading}}" disabled="{{loading}}">{{loading ? '查找中' : '搜索'}}</button></view>
+  <view class="error" wx:if="{{error}}">{{error}}<button class="secondary" wx:if="{{searched}}" bindtap="search" disabled="{{loading}}">重试搜索</button></view>
+  <view class="recent" wx:if="{{recent.length && !searched}}"><view class="section-heading"><text>最近搜索</text><button class="text-button" bindtap="clearRecent">清除</button></view><view class="chips"><button class="chip" wx:for="{{recent}}" wx:key="*this" data-query="{{item}}" bindtap="useRecent">{{item}}</button></view><view class="caption local-caption">搜索记录仅保存在本机</view></view>
+  <view class="loading-state" wx:if="{{loading}}">正在查找节目，请稍候…</view>
+  <view class="section-heading result-heading" wx:if="{{results.length}}"><text>找到的节目</text><text class="caption">{{results.length}} 个结果</text></view>
+  <view class="panel list-panel" wx:if="{{results.length}}">
+    <view class="row result-row" wx:for="{{results}}" wx:key="id" bindtap="open" data-id="{{item.id}}" aria-label="{{item.title}}，查看单集">
+      <view class="result-number">{{index + 1}}</view><view class="result-content"><view class="name">{{item.title}}</view><view class="meta">{{item.author || '播客节目'}}</view></view><view class="row-arrow"></view>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{searched && !loading && !error && !results.length}}"><view class="empty-title">还没有找到“{{searchedTerm}}”</view><view>检查名称，或换一个更短的关键词。</view></view>
+  <view class="how-it-works" wx:if="{{!searched}}"><view class="section-heading">一段声音，三步留下</view><view class="steps"><view class="step"><text class="step-number">01</text><text class="step-title">选择单集</text><text class="caption">从想重读的开始</text></view><view class="step"><text class="step-number">02</text><text class="step-title">生成文字</text><text class="caption">提交后稍候片刻</text></view><view class="step"><text class="step-number">03</text><text class="step-title">阅读与导出</text><text class="caption">留给下一次回看</text></view></view></view>
+  <view class="home-footer"><button class="text-button footer-link" bindtap="aiSettings">AI 设置与免费额度</button><button class="text-button footer-link" bindtap="privacy">隐私与使用说明</button><view wx:if="{{development}}" class="environment-note">{{demo ? '本地演示 · 搜索与转写为示例内容' : '本地开发 · 使用本机服务处理播客'}}</view></view>
+</view>

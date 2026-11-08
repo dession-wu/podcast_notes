@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -8,16 +8,20 @@ import {
   RotateCcw,
   Copy,
   Check,
+  CheckCircle2,
   AlertCircle,
   Mic,
   X,
   Wand2,
 } from "lucide-react";
+import Link from "next/link";
 import {
   processContent,
   analyzeContent,
   ProcessResponse,
   TemplateRecommendation,
+  getTranscriptionStatus,
+  saveNote,
 } from "@/lib/api";
 import { getTemplateName } from "@/lib/templates";
 import SmartRecommendation from "@/components/template/SmartRecommendation";
@@ -28,6 +32,8 @@ export default function ContentProcessor() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  /* 记录本次生成笔记在笔记库中的编号，null 表示未保存成功 */
+  const [savedNoteId, setSavedNoteId] = useState<number | null>(null);
   const [importedFromTranscription, setImportedFromTranscription] =
     useState(false);
 
@@ -48,59 +54,61 @@ export default function ContentProcessor() {
     const params = new URLSearchParams(window.location.search);
     const transcriptText = params.get("transcript");
     if (transcriptText) {
-      const decoded = decodeURIComponent(transcriptText);
-      setTranscript(decoded);
+      // URL import is an external source, read once after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTranscript(transcriptText);
       setImportedFromTranscription(true);
       window.history.replaceState({}, "", window.location.pathname);
+    }
+    const taskId = params.get("transcript_task");
+    if (taskId) {
+      getTranscriptionStatus(taskId).then((data) => {
+        if (data.status !== "completed" || !data.result?.text) throw new Error("转录尚未完成或内容不可用，请返回文件库重试");
+        setTranscript(data.result.text);
+        setImportedFromTranscription(true);
+      }).catch((err: unknown) => setError(err instanceof Error ? err.message : "转录导入失败"));
     }
   }, []);
 
   // Auto-analyze when transcript changes (debounced)
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
       if (transcript.trim().length > 200) {
-        handleAnalyze();
+        setIsAnalyzing(true);
+        try {
+          const data = await analyzeContent({transcript_text: transcript});
+          if (active) setRecommendation(data.recommendation);
+        } catch {
+          if (active) setRecommendation(null);
+        } finally {
+          if (active) setIsAnalyzing(false);
+        }
       } else {
         setRecommendation(null);
+        setIsAnalyzing(false);
       }
     }, 800);
 
-    return () => clearTimeout(timer);
-  }, [transcript]);
-
-  const handleAnalyze = useCallback(async () => {
-    if (!transcript.trim() || transcript.length < 200) return;
-
-    setIsAnalyzing(true);
-    try {
-      const data = await analyzeContent({
-        transcript_text: transcript,
-      });
-      setRecommendation(data.recommendation);
-      // Auto-select the recommended template
-      setSelectedTemplate(data.recommendation.recommended_template);
-    } catch (err) {
-      console.error("Analysis error:", err);
-      // Silently fail - user can still manually select
-    } finally {
-      setIsAnalyzing(false);
-    }
+    return () => { active = false; clearTimeout(timer); };
   }, [transcript]);
 
   const handleProcess = async () => {
     if (!transcript.trim()) return;
     setIsProcessing(true);
     setError("");
-    setUsedTemplate("");
-    setRecommendationInfo(null);
 
     try {
       const data = await processContent({
         transcript_text: transcript,
         template: selectedTemplate,
       });
+      if (!data.success) throw new Error("生成未成功，请重试");
       setNote(data.note);
       setUsedTemplate(data.used_template);
+      /* 记录后端自动入库结果，用于提示用户 */
+      setSavedNoteId(data.saved_note_id ?? null);
+      setRecommendationInfo(null);
       if (data.recommendation_info?.was_recommended) {
         setRecommendationInfo({
           was_recommended: true,
@@ -108,11 +116,22 @@ export default function ContentProcessor() {
         });
       }
     } catch (err) {
-      setError("处理失败，请检查后端服务是否运行");
-      console.error("Process error:", err);
+      setError(err instanceof Error ? err.message : "处理失败，请重试");
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleSaveAgain = async () => {
+    if (!note || isProcessing) return;
+    setIsProcessing(true);
+    setError("");
+    try {
+      const result = await saveNote({...note, template: usedTemplate});
+      setSavedNoteId(result.note.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "保存失败，请复制笔记保留内容");
+    } finally { setIsProcessing(false); }
   };
 
   const handleCopy = async () => {
@@ -194,6 +213,7 @@ export default function ContentProcessor() {
             </span>
           </div>
           <textarea
+            disabled={isProcessing}
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
             placeholder="在此粘贴播客转录文本，或从文件库选择音频进行转录..."
@@ -213,6 +233,7 @@ export default function ContentProcessor() {
               {transcript && (
                 <button
                   onClick={() => setTranscript("")}
+                  disabled={isProcessing}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 transition-colors hover:text-white"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -291,6 +312,32 @@ export default function ContentProcessor() {
                       {recommendationInfo.reason}
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* 笔记保存状态提示 */}
+              {savedNoteId !== null ? (
+                <div className="mb-4 flex items-center justify-between rounded-xl border border-green-500/20 bg-green-500/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" />
+                    <span className="text-xs text-green-300/80">
+                      已保存到我的笔记（编号 #{savedNoteId}），刷新页面不会丢失
+                    </span>
+                  </div>
+                  <Link
+                    href="/dashboard/notes"
+                    className="shrink-0 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs text-green-300 transition-colors hover:bg-green-500/20"
+                  >
+                    查看
+                  </Link>
+                </div>
+              ) : (
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-white/5 p-3">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
+                  <span className="text-xs text-amber-200/60">
+                    自动保存失败，请重试保存或复制内容
+                  </span>
+                  <button onClick={handleSaveAgain} disabled={isProcessing} className="ml-auto shrink-0 rounded-lg bg-white/5 px-3 py-1.5 text-xs text-gray-300 disabled:opacity-50">重试保存</button>
                 </div>
               )}
 

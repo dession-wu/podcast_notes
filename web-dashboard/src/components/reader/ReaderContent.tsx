@@ -1,5 +1,9 @@
 "use client";
 
+import { highlightHTML } from '../../lib/safeHighlight.mjs';
+const highlightText = (text: string, keyword: string) => highlightHTML(text, keyword, false);
+
+
 import { useRef, useEffect, useCallback, useMemo } from "react";
 import { useReader } from "./ReaderContext";
 
@@ -114,15 +118,7 @@ function parseSections(text: string): ReaderSection[] {
   return sections;
 }
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
-function highlightText(text: string, keyword: string): string {
-  if (!keyword.trim()) return text;
-  const escaped = escapeRegex(keyword);
-  return text.replace(new RegExp(`(${escaped})`, "gi"), "<mark>$1</mark>");
-}
 
 export default function ReaderContent({
   content,
@@ -232,8 +228,8 @@ export default function ReaderContent({
                   section.level === 1 ? "text-xl" : "text-lg"
                 }`}
                 style={{ color: "var(--reader-text)" }}
+                dangerouslySetInnerHTML={{ __html: highlightText(section.title, searchKeyword) }}
               >
-                {highlightText(section.title, searchKeyword)}
               </div>
             )}
             {section.paragraphs.map((para, pIdx) => {

@@ -25,7 +25,7 @@ class TestLibraryCountConsistency:
 
         # Verify that all directories are scanned for counts
         assert "all_files_for_counts" in source
-        assert "for ft, dir_path in type_dirs.items()" in source
+        assert "for ft, directories in type_dirs.items()" in source
 
         # Verify that type_counts is calculated from complete scan
         assert "type_counts = {\"audio\": 0, \"transcript\": 0, \"image\": 0}" in source

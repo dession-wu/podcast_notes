@@ -1,43 +1,20 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-
-interface AuthGuardProps {
-  children: React.ReactNode;
-}
-
-export default function AuthGuard({ children }: AuthGuardProps) {
-  const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
+export default function AuthGuard({ children }: { children: React.ReactNode }) {
+  const [authenticated, setAuthenticated] = useState(false);
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      if (process.env.NODE_ENV === "development") {
-        localStorage.setItem("auth_token", "dev");
-        setIsAuthenticated(true);
-      } else {
-        router.replace("/");
-      }
-    } else {
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
-  }, [router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#050507] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
+    let active = true;
+    const verify = async () => {
+      try {
+        const response = await fetch("/auth/session", { credentials: "same-origin", cache: "no-store" });
+        if (response.status !== 204) { window.location.replace("/login"); return; }
+        if (active) setAuthenticated(true);
+      } catch { window.location.replace("/login"); }
+    };
+    void verify();
+    window.addEventListener("focus", verify);
+    return () => { active = false; window.removeEventListener("focus", verify); };
+  }, []);
+  if (!authenticated) return <div role="status" className="min-h-screen bg-[#050507] flex items-center justify-center text-gray-400">正在验证登录状态……</div>;
   return <>{children}</>;
 }

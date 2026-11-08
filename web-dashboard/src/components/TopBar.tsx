@@ -15,6 +15,7 @@ const routeLabels: Record<string, string> = {
   "/dashboard/settings": "系统设置",
   "/dashboard/library": "文件库",
   "/dashboard/create": "内容创作",
+  "/dashboard/notes": "我的笔记",
 };
 
 export default function TopBar() {
@@ -65,9 +66,9 @@ export default function TopBar() {
   }, [canGoForward]);
 
   return (
-    <header className="h-16 border-b border-gray-900 flex items-center justify-between px-6 md:px-8">
+    <header className="h-16 border-b border-gray-900 flex items-center justify-between pl-20 pr-4 md:px-8">
       {/* Left: Navigation + Breadcrumb */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Navigation Buttons */}
         <div className="flex items-center gap-1">
           <button
@@ -98,7 +99,7 @@ export default function TopBar() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1 sm:gap-3">
         <button className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-gray-300 hover:bg-white/10 transition cursor-pointer">
           <Bell className="w-4 h-4" />
         </button>

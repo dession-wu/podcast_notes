@@ -1,0 +1,17 @@
+<view class="container episodes-page">
+  <view class="notice" wx:if="{{demo}}">演示节目与文字，仅用于体验流程。</view>
+  <view class="eyebrow">节目单集</view>
+  <view class="title page-title">{{title}}</view><view class="subtitle">有些声音，值得再读一次。</view>
+  <view class="search-field"><input value="{{query}}" bindinput="input" placeholder="筛选已加载的单集" maxlength="80" /><button class="clear-button" wx:if="{{query}}" bindtap="clearFilter">清空</button></view>
+  <view class="caption filter-caption">已加载 {{episodes.length}} 集{{query ? ' · 匹配 ' + viewEpisodes.length + ' 集' : ''}}。{{hasMore ? '可继续加载更多单集。' : ''}}</view>
+  <view class="limit-note">转写额度 · 每天 {{dailyLimit}} 次 / 单集最长 {{maxMinutes}} 分钟</view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <view class="panel list-panel" wx:if="{{viewEpisodes.length}}"><view class="row episode-row" wx:for="{{viewEpisodes}}" wx:key="id">
+    <view class="name">{{item.title}}</view><view class="episode-actions"><view class="meta">{{item.durationLabel}}<text wx:if="{{item.tooLong}}"> · 超出时长限制</text></view>
+    <button class="primary compact" bindtap="submit" data-id="{{item.id}}" loading="{{submitting && submittingId === item.id}}" disabled="{{submitting || item.tooLong}}">{{item.tooLong ? '暂不支持' : '生成文字'}}</button></view>
+  </view></view>
+  <view class="empty" wx:if="{{query && !viewEpisodes.length && !loading && episodes.length}}">已加载单集中没有匹配结果。{{hasMore ? '可继续加载，或尝试其他关键词。' : '试试其他关键词。'}}</view>
+  <button class="secondary" wx:if="{{hasMore}}" bindtap="loadMore" loading="{{loading}}" disabled="{{loading}}">{{loading ? '正在加载' : (error ? '重试加载' : (episodes.length ? '加载更多单集' : '加载单集'))}}</button>
+  <view class="empty" wx:if="{{!hasMore && !episodes.length}}">暂时没有可处理的单集。</view>
+  <view class="end-note" wx:if="{{!hasMore && episodes.length}}">已加载全部单集</view>
+</view>

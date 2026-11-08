@@ -3,30 +3,35 @@
 from __future__ import annotations
 
 import uuid
+import time
+from typing import Literal
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
 
 from core.image_generator import ImageGenerator
+from backend.persistent_jobs import PersistentJobsDict
+from backend.job_store import add_job, register_jobs_dict
 from utils import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
 
 # In-memory job storage
-jobs: dict[str, dict] = {}
+jobs = PersistentJobsDict("images")
+register_jobs_dict("images", jobs)
 
 
 class ImageGenerateRequest(BaseModel):
     """Image generation request model."""
 
-    title: str
-    content: str
+    title: str = Field(min_length=1, max_length=300)
+    content: str = Field(min_length=1, max_length=30000)
     tags: list[str] = []
     podcast_name: str = ""
     episode_title: str = ""
-    style: str = "blue"
+    style: Literal["blue", "green", "purple"] = "blue"
     template: str = "v9"
 
 
@@ -48,7 +53,7 @@ class ImageStatusResponse(BaseModel):
 
 
 @router.post("/", response_model=ImageGenerateResponse)
-async def start_image_generation(request: ImageGenerateRequest):
+async def start_image_generation(request: ImageGenerateRequest, background_tasks: BackgroundTasks):
     """Start generating images for a Xiaohongshu note.
 
     Args:
@@ -57,31 +62,26 @@ async def start_image_generation(request: ImageGenerateRequest):
     Returns:
         Image generation response with task_id
     """
+    if not request.title.strip() or not request.content.strip():
+        raise HTTPException(status_code=422, detail="请填写标题和正文")
+    task_id = str(uuid.uuid4())
+    add_job(jobs, task_id, {"status": "processing", "progress": 10.0, "result": None, "error": None, "created_at": time.time()})
+    background_tasks.add_task(_generate_images, task_id, request)
+    return ImageGenerateResponse(task_id=task_id, status="processing")
+
+
+async def _generate_images(task_id: str, request: ImageGenerateRequest):
     try:
-        task_id = str(uuid.uuid4())
 
         # Create job
-        jobs[task_id] = {
-            "status": "processing",
-            "progress": 10.0,
-            "result": None,
-            "error": None,
+        # Preserve all entered text, split into readable cards instead of silently dropping it.
+        paragraphs = [p.strip() for p in request.content.split("\n") if p.strip()]
+        chunks = [p[i:i + 180] for p in paragraphs for i in range(0, len(p), 180)]
+        structured_content = {
+            "hook_title": request.title,
+            "tags": request.tags,
+            "key_points": [{"title": f"要点 {i + 1}", "content": chunk} for i, chunk in enumerate(chunks)],
         }
-
-        # Prepare structured content based on template
-        if request.template == "v9":
-            structured_content = {
-                "hook_title": request.title,
-                "thinking": request.content,
-                "tags": request.tags,
-            }
-        else:
-            structured_content = {
-                "hook_title": request.title,
-                "thinking": request.content,
-                "tags": request.tags,
-                "key_points": [{"title": p} for p in request.content.split("\n") if p.strip()][:5],
-            }
 
         source_info = {
             "podcast_name": request.podcast_name,
@@ -107,21 +107,20 @@ async def start_image_generation(request: ImageGenerateRequest):
             })
 
         # Update job
-        jobs[task_id]["status"] = "completed"
         jobs[task_id]["progress"] = 100.0
         jobs[task_id]["result"] = {
             "images": image_urls,
             "count": len(image_urls),
         }
-
-        return ImageGenerateResponse(task_id=task_id, status="completed")
+        jobs[task_id]["status"] = "completed"
+        jobs[task_id]["finished_at"] = time.time()
 
     except Exception as e:
         logger.error("Image generation failed", error=str(e))
         if "task_id" in locals():
             jobs[task_id]["status"] = "failed"
             jobs[task_id]["error"] = str(e)
-        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+            jobs[task_id]["finished_at"] = time.time()
 
 
 @router.get("/{task_id}", response_model=ImageStatusResponse)

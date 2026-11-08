@@ -1,0 +1,12 @@
+<view class="container">
+ <view class="eyebrow">按需使用 AI</view><view class="title page-title">AI 设置</view>
+ <view class="subtitle">默认模型 Qwen 3.7 Flash。搜索、转写、阅读和导出不消耗 AI 免费次数。</view>
+ <view class="error" wx:if="{{error}}">{{error}}</view><view class="notice" wx:if="{{message}}">{{message}}</view>
+ <view class="loading-state" wx:if="{{loading}}">正在读取设置…</view>
+ <view class="panel" wx:if="{{settings}}"><view class="name">免费剩余 {{settings.trial_remaining}} / {{settings.trial_total}} 次</view><view class="meta">已完成 {{settings.trial_used}} 次 · 正在处理 {{settings.trial_reserved}} 次</view><view class="meta">每个微信用户累计共用3次，不按日重置。一次生成精简正文、摘要和核心观点共计1次；后台失败不扣，查看已有结果不扣。</view><view class="notice" wx:if="{{!settings.platform_configured && !settings.personal_configured}}">平台AI尚未配置，可先配置自己的Key；原文功能正常可用。</view></view>
+ <view class="panel"><view class="name">自己的百炼 API</view><view class="meta">{{settings.personal_configured ? '已配置，Key不会回显；填写新Key可替换。' : '免费次数用完后，配置自己的Key继续使用。'}}</view><view class="caption">配置后优先使用个人额度，费用由你的阿里云账号承担。</view>
+ <view class="section-heading">API Key 所属地域</view><picker range="{{regions}}" value="{{regionIndex}}" bindchange="region" disabled="{{saving}}"><view class="search-field"><view class="meta">{{regions[regionIndex]}}</view></view></picker>
+ <view class="section-heading">API Key</view><view class="search-field"><input password value="{{apiKey}}" bindinput="input" placeholder="粘贴你自己的百炼 API Key" maxlength="512" disabled="{{saving}}" /></view><button class="primary" bindtap="save" loading="{{saving}}" disabled="{{saving || loading}}">保存并验证</button><view class="caption">验证会使用你的Key发送最小请求，可能产生极少量API费用；不消耗平台免费次数。退出此页会清空输入框。</view><button class="secondary" wx:if="{{settings.personal_configured}}" bindtap="remove" disabled="{{saving}}">删除个人Key</button></view>
+ <view class="panel"><view class="name">如何获取 API Key</view><view class="meta">1. 打开阿里云百炼控制台，开通按量付费模型服务并确认账号余额或资源包可抵扣。</view><view class="meta">2. 在与Key一致的地域创建API Key，确认可调用 qwen3.7-flash；Coding Plan 订阅不等同于本页按量接口。</view><view class="meta">3. 将Key粘贴到本页，选择相同地域，点击“保存并验证”。</view><view class="meta">Key无效请重新创建；权限错误请核对地域与模型权限；额度不足请检查余额；限流请稍后重试。</view><button class="secondary" bindtap="copyGuide">复制百炼控制台地址</button></view>
+ <view class="caption">生成AI结果时，原文会发送至所选百炼服务处理；请确认有权处理内容。Key在服务器加密保存，只用于当前用户请求，不会分享给其他用户。AI可能遗漏或误解原文，请对照核验。</view>
+</view>

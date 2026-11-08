@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -75,12 +76,13 @@ class ImageGenerator:
         """
         self.output_dir = output_dir or (settings.output_dir / "images")
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.filename_prefix = uuid.uuid4().hex
 
         # Jinja2 模板环境
         template_dir = Path(__file__).parent.parent / "templates"
         self.jinja_env = Environment(
             loader=FileSystemLoader(str(template_dir)),
-            autoescape=False,
+            autoescape=True,
         )
 
         logger.info("图片生成器初始化完成", output_dir=str(self.output_dir))
@@ -120,7 +122,7 @@ class ImageGenerator:
             },
         )
 
-        output_path = self.output_dir / f"cover_{self._safe_filename(title)}.png"
+        output_path = self.output_dir / f"{self.filename_prefix}_cover_{self._safe_filename(title)}.png"
         await self._html_to_image(html_content, output_path)
 
         logger.info("封面图生成完成", path=str(output_path))
@@ -164,7 +166,7 @@ class ImageGenerator:
             },
         )
 
-        output_path = self.output_dir / f"content_{page_num:02d}.png"
+        output_path = self.output_dir / f"{self.filename_prefix}_content_{page_num:02d}.png"
         await self._html_to_image(html_content, output_path)
 
         logger.info("内容页生成完成", page=page_num, path=str(output_path))
@@ -202,7 +204,7 @@ class ImageGenerator:
             },
         )
 
-        output_path = self.output_dir / "summary.png"
+        output_path = self.output_dir / f"{self.filename_prefix}_summary.png"
         await self._html_to_image(html_content, output_path)
 
         logger.info("总结页生成完成", path=str(output_path))
@@ -253,7 +255,7 @@ class ImageGenerator:
                 },
             )
 
-            output_path = self.output_dir / f"content_{i:02d}.png"
+            output_path = self.output_dir / f"{self.filename_prefix}_content_{i:02d}.png"
             await self._html_to_image(html_content, output_path)
             images.append(output_path)
             logger.info("文字稿页生成完成", page=i, path=str(output_path))
@@ -325,7 +327,7 @@ class ImageGenerator:
                 "page_height": self.PAGE_HEIGHT,
             },
         )
-        outline_path = self.output_dir / "content_01_outline.png"
+        outline_path = self.output_dir / f"{self.filename_prefix}_content_01_outline.png"
         await self._html_to_image(outline_html, outline_path)
         images.append(outline_path)
         logger.info("概要目录页生成完成", path=str(outline_path))
@@ -352,7 +354,7 @@ class ImageGenerator:
                         "page_height": self.PAGE_HEIGHT,
                     },
                 )
-                detail_path = self.output_dir / f"content_{current_page_num:02d}.png"
+                detail_path = self.output_dir / f"{self.filename_prefix}_content_{current_page_num:02d}.png"
                 await self._html_to_image(detail_html, detail_path)
                 images.append(detail_path)
                 logger.info("详细内容页生成完成", stage=i, page=current_page_num, topics=len(topics))
@@ -377,7 +379,7 @@ class ImageGenerator:
                             "page_height": self.PAGE_HEIGHT,
                         },
                     )
-                    detail_path = self.output_dir / f"content_{current_page_num:02d}.png"
+                    detail_path = self.output_dir / f"{self.filename_prefix}_content_{current_page_num:02d}.png"
                     await self._html_to_image(detail_html, detail_path)
                     images.append(detail_path)
                     logger.info(
@@ -403,7 +405,7 @@ class ImageGenerator:
                 "page_height": self.PAGE_HEIGHT,
             },
         )
-        thinking_path = self.output_dir / f"content_{thinking_page_num:02d}_thinking.png"
+        thinking_path = self.output_dir / f"{self.filename_prefix}_content_{thinking_page_num:02d}_thinking.png"
         await self._html_to_image(thinking_html, thinking_path)
         images.append(thinking_path)
         logger.info("思考总结页生成完成", path=str(thinking_path))
@@ -445,6 +447,13 @@ class ImageGenerator:
             所有生成的图片路径列表
         """
         images: list[Path] = []
+
+        if not any(structured_content.get(key) for key in ("stages", "sections", "key_points")) and structured_content.get("thinking"):
+            paragraphs = [p.strip() for p in structured_content["thinking"].split("\n") if p.strip()]
+            chunks = [p[i:i + 180] for p in paragraphs for i in range(0, len(p), 180)]
+            structured_content = {**structured_content, "key_points": [
+                {"title": f"要点 {i + 1}", "content": chunk} for i, chunk in enumerate(chunks)
+            ]}
 
         # 1. 封面图
         cover = await self.generate_cover(
@@ -502,7 +511,10 @@ class ImageGenerator:
                         all_points.append(point.get("text", "")[:30])
             key_points_for_summary = all_points[:6]
         else:
-            key_points_for_summary = [p.get("title", "") for p in structured_content.get("key_points", [])]
+            key_points_for_summary = [
+                (p.get("content", "")[:40] if p.get("title", "").startswith("要点 ") else p.get("title", ""))
+                for p in structured_content.get("key_points", [])
+            ][:6]
 
         summary = await self.generate_summary_page(
             key_points=key_points_for_summary,
@@ -536,16 +548,19 @@ class ImageGenerator:
             output_path: 输出图片路径
         """
         async with async_playwright() as p:
-            browser = await p.chromium.launch()
+            import os
+            browser = await p.chromium.launch(executable_path=os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH") or None)
             page = await browser.new_page(
                 viewport={
                     "width": self.PAGE_WIDTH,
                     "height": self.PAGE_HEIGHT,
                 },
                 device_scale_factor=self.DEVICE_SCALE,
+                java_script_enabled=False,
             )
 
-            await page.set_content(html_content)
+            await page.route("**/*", lambda route: route.abort())
+            await page.set_content(html_content, wait_until="domcontentloaded")
             # 等待字体加载完成
             await page.wait_for_timeout(500)
 

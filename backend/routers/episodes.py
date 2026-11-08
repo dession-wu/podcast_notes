@@ -9,7 +9,7 @@ import socket
 from urllib.error import URLError
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.audio_downloader import AudioDownloader, RSSParseError
 from utils import get_logger
@@ -46,8 +46,8 @@ class EpisodesRequest(BaseModel):
 
     rss_url: str
     sort: str = "newest"  # "newest" | "oldest"
-    page: int = 1
-    page_size: int = 20
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
 
 
 def _format_duration(seconds: int | None) -> str | None:
@@ -63,7 +63,7 @@ def _format_duration(seconds: int | None) -> str | None:
 
 
 @router.post("/", response_model=EpisodesResponse)
-async def get_episodes(request: EpisodesRequest):
+def get_episodes(request: EpisodesRequest):
     """获取播客单集列表.
 
     通过 RSS URL 解析获取播客的所有单集信息。
@@ -75,24 +75,15 @@ async def get_episodes(request: EpisodesRequest):
         播客信息和单集列表
     """
     try:
-        # 设置全局 socket 超时（feedparser 内部使用 urllib）
-        old_timeout = socket.getdefaulttimeout()
-        socket.setdefaulttimeout(15)
-
         try:
             downloader = AudioDownloader()
             feed = downloader.parse_rss(request.rss_url)
         except (RSSParseError, URLError, socket.timeout, OSError) as e:
             logger.warning("RSS 解析失败", error=str(e), rss_url=request.rss_url)
-            return EpisodesResponse(
-                podcast_title="未知播客",
-                podcast_description="无法解析该播客的 RSS 订阅源，可能是网络连接问题或 RSS 地址无效。",
-                podcast_image=None,
-                total_episodes=0,
-                episodes=[],
+            raise HTTPException(
+                status_code=400,
+                detail="无法解析该播客的 RSS 订阅源，可能是网络连接问题或 RSS 地址无效，请检查后重试。",
             )
-        finally:
-            socket.setdefaulttimeout(old_timeout)
 
         # 排序
         episodes = feed.episodes

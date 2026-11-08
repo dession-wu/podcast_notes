@@ -1,0 +1,14 @@
+<view class="container tasks-page">
+  <view class="notice" wx:if="{{demo}}">本地演示模式，结果并非真实转写。</view>
+  <view class="eyebrow">你的播客阅读记录</view>
+  <view class="heading-row"><view class="title page-title">我的文字</view><button class="text-button" bindtap="refresh" loading="{{loading}}" disabled="{{loading}}">刷新</button></view><view class="subtitle">值得重读的，都在这里。记录保留 {{retentionDays}} 天。</view>
+  <view class="filter-tabs"><button class="filter-tab {{filter === 'all' ? 'selected' : ''}}" bindtap="selectFilter" data-filter="all">全部 {{tasks.length}}</button><button class="filter-tab {{filter === 'active' ? 'selected' : ''}}" bindtap="selectFilter" data-filter="active">处理中 {{activeCount}}</button><button class="filter-tab {{filter === 'completed' ? 'selected' : ''}}" bindtap="selectFilter" data-filter="completed">已完成 {{completedCount}}</button><button class="filter-tab {{filter === 'failed' ? 'selected' : ''}}" bindtap="selectFilter" data-filter="failed">失败 {{failedCount}}</button></view>
+  <view class="error" wx:if="{{error}}">{{error}}</view>
+  <view class="loading-state" wx:if="{{loading && !tasks.length}}">正在读取你的记录…</view>
+  <view class="panel list-panel" wx:if="{{viewTasks.length}}"><view class="row task-row" wx:for="{{viewTasks}}" wx:key="id" bindtap="open" data-id="{{item.id}}">
+    <view class="status-line"><text class="status status-{{item.status}}">{{item.label}}</text><text class="caption">{{item.createdLabel}}</text></view><view class="name">{{item.title}}</view><view class="meta">{{item.hint}}</view><view class="meta" wx:if="{{item.estimateLabel}}">{{item.estimateLabel}}</view><view class="meta" wx:if="{{item.timingLabel}}">{{item.timingLabel}}</view><view class="task-error" wx:if="{{item.error}}">{{item.error}}</view><view class="link">{{item.status === 'completed' ? '阅读文字' : '查看详情'}}</view>
+  </view></view>
+  <view class="empty" wx:if="{{!tasks.length && !loading && !error}}"><view class="empty-title">这里，等着你的第一份文字</view><view>选一期想重读的节目，生成后会保存在这里。</view><button class="primary" bindtap="search">去搜索播客</button></view>
+  <view class="empty" wx:if="{{tasks.length && !viewTasks.length && !error}}">这个分类下还没有记录。</view>
+  <view class="end-note" wx:if="{{activeCount}}">可切后台或关闭小程序，服务器会继续处理。再次打开“我的文字”即可查看，无需保持亮屏。预计时间会随排队和处理情况调整。</view>
+</view>

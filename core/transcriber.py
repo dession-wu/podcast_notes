@@ -404,31 +404,40 @@ class Transcriber:
             episode_title="",
         )
 
-    def _transcribe_with_elevenlabs(
-        self,
-        audio_path: Path,
-        language: str | None,
-    ) -> Transcript:
-        """使用 ElevenLabs Scribe API 转录（预留接口）.
-
-        Args:
-            audio_path: 音频文件路径
-            language: 音频语言
-
-        Returns:
-            转录文本对象
-
-        Raises:
-            TranscriberError: 当前版本未实现
-        """
+    def _transcribe_with_elevenlabs(self, audio_path: Path, language: str | None) -> Transcript:
+        """Transcribe with the account's own Scribe key; no local model required."""
+        import httpx
         if not settings.is_elevenlabs_configured:
-            raise TranscriberError(
-                "ElevenLabs API 密钥未配置，请在 .env 中设置 ELEVENLABS_API_KEY"
-            )
+            raise TranscriberError("请在个人语音设置中填写 ElevenLabs API Key。")
+        data = {"model_id": "scribe_v2", "timestamps_granularity": "word", "diarize": str(self.enable_diarization).lower(), "tag_audio_events": "false"}
+        if language and language != "auto":
+            data["language_code"] = language
+        try:
+            with audio_path.open("rb") as stream:
+                response = httpx.post("https://api.elevenlabs.io/v1/speech-to-text", headers={"xi-api-key": settings.elevenlabs_api_key}, data=data, files={"file": (audio_path.name, stream)}, timeout=600)
+            if response.status_code != 200:
+                raise TranscriberError("语音服务未完成转写，请检查个人 Key、额度及音频格式。")
+            result = response.json()
+        except (httpx.HTTPError, ValueError):
+            raise TranscriberError("语音服务连接失败，请稍后重试。") from None
+        segments = []
+        for word in result.get("words", []):
+            if word.get("type") not in ("word", "spacing") or not word.get("text"):
+                continue
+            start, end = float(word.get("start", 0)), float(word.get("end", 0))
+            speaker = word.get("speaker_id")
+            if segments and segments[-1].speaker == speaker and start - segments[-1].end_time < 1.5 and end - segments[-1].start_time < 15:
+                segments[-1].text += word["text"]
+                segments[-1].end_time = end
+            else:
+                segments.append(TranscriptSegment(start_time=start, end_time=end, text=word["text"], speaker=speaker))
+        text = result.get("text", "").strip()
+        if not text:
+            raise TranscriberError("未识别到语音内容，请检查音频后重试。")
+        if not segments:
+            segments = [TranscriptSegment(start_time=0, end_time=0, text=text)]
+        return Transcript(episode_title=audio_path.stem, segments=segments, full_text=text, language=result.get("language_code", language), duration_seconds=segments[-1].end_time, stt_provider="elevenlabs", diarization_enabled=self.enable_diarization)
 
-        raise TranscriberError(
-            "ElevenLabs Scribe 支持即将推出，当前请使用 whisper 或 faster-whisper"
-        )
 
     def _parse_whisper_result(self, result: dict[str, Any]) -> Transcript:
         """解析 Whisper 转录结果.

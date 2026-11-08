@@ -1,0 +1,6 @@
+FROM local-podcast-notes-backend:before-scribe
+USER root
+RUN pip install --index-url https://pypi.org/simple 'openai>=1.31,<3'
+COPY --chown=appuser:appuser core /app/core
+COPY --chown=appuser:appuser backend /app/backend
+USER appuser

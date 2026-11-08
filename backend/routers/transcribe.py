@@ -11,11 +11,16 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from config import settings
+from config.settings import STTProvider
+from backend.job_store import add_job, mark_job_finished, register_jobs_dict
+from backend.persistent_jobs import PersistentJobsDict
+from backend.security import is_path_allowed
 from core.smart_transcriber import SmartTranscriber, SmartTranscriberError
 from core.transcriber import Transcriber, TranscriberError
 from models.podcast import PodcastEpisode
@@ -28,12 +33,12 @@ router = APIRouter()
 # Thread pool for running sync transcription in background
 transcribe_executor = ThreadPoolExecutor(max_workers=2)
 
-# In-memory job storage (replace with Redis/DB in production)
-jobs: dict[str, dict] = {}
+# 任务存储：SQLite 持久化（重启恢复），并注册到统一淘汰机制
+jobs: PersistentJobsDict = PersistentJobsDict("transcribe")
 
 # Supported audio formats
 SUPPORTED_AUDIO_FORMATS = {".mp3", ".m4a", ".aac", ".ogg", ".wav", ".flac", ".wma", ".opus"}
-MAX_FILE_SIZE_MB = 500
+MAX_FILE_SIZE_MB = 50  # Match the nginx upload limit.
 
 
 class TranscriptionErrorCategory:
@@ -316,7 +321,7 @@ class TranscribeByPathRequest(BaseModel):
     """Request to transcribe an existing file by path."""
 
     file_path: str
-    force_engine: str | None = None  # "whisper" or "sensevoice", None for auto
+    force_engine: Literal["auto", "whisper", "faster-whisper", "sensevoice", "elevenlabs"] | None = None
 
 
 def _validate_audio_file(file_path: Path) -> tuple[bool, str]:
@@ -417,21 +422,23 @@ def _do_transcription(task_id: str, file_path: Path, title: str, force_engine: s
                         # Store current stage name
                         jobs[task_id]["stage"] = stage_names[stage_idx]
                 
-                time.sleep(check_interval)
+                stop_progress.wait(check_interval)
 
         progress_thread = threading.Thread(target=update_progress, daemon=True)
         progress_thread.start()
 
         try:
-            # Run transcription with smart routing
-            transcriber = SmartTranscriber()
-            transcript = transcriber.transcribe(episode, force_engine=force_engine)
+            # Explicit engine requests and the saved settings must be respected.
+            if force_engine == "auto":
+                transcript = SmartTranscriber().transcribe(episode)
+            else:
+                selected = STTProvider(force_engine or settings.stt_provider.value)
+                transcript = Transcriber(provider=selected).transcribe(episode)
 
             # Get language detection info from stt_provider
             engine_used = transcript.stt_provider if transcript.stt_provider else "unknown"
             detection_info = {"language": transcript.language, "method": "auto"}
 
-            jobs[task_id]["status"] = "completed"
             jobs[task_id]["progress"] = 100.0
             jobs[task_id]["result"] = {
                 "text": transcript.text,
@@ -443,6 +450,8 @@ def _do_transcription(task_id: str, file_path: Path, title: str, force_engine: s
                 "language_detected": detection_info.get("language"),
                 "detection_method": detection_info.get("method"),
             }
+            jobs[task_id]["status"] = "completed"
+            mark_job_finished(jobs, task_id)
 
             # Record success metrics
             metrics_collector.end_job(
@@ -480,6 +489,7 @@ def _do_transcription(task_id: str, file_path: Path, title: str, force_engine: s
         )
         
         jobs[task_id]["status"] = "failed"
+        mark_job_finished(jobs, task_id)
         jobs[task_id]["error"] = message
         jobs[task_id]["error_category"] = category
         jobs[task_id]["error_detail"] = str(e)  # Store original error detail
@@ -507,13 +517,27 @@ async def start_transcription(audio: UploadFile = File(...)):
 
     try:
         # Save uploaded file
-        temp_dir = settings.output_dir / "temp"
+        from backend.config.download_settings import download_settings_manager
+        temp_dir = download_settings_manager.load().get_effective_download_dir()
         temp_dir.mkdir(parents=True, exist_ok=True)
 
-        file_path = temp_dir / f"{task_id}_{audio.filename}"
-        with open(file_path, "wb") as f:
-            content = await audio.read()
-            f.write(content)
+        filename = Path((audio.filename or "audio").replace("\\", "/")).name
+        if Path(filename).suffix.lower() not in SUPPORTED_AUDIO_FORMATS:
+            raise HTTPException(status_code=415, detail="不支持的音频格式")
+        file_path = temp_dir / f"{task_id}_{filename}"
+        size = 0
+        try:
+            with open(file_path, "wb") as f:
+                while chunk := await audio.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > MAX_FILE_SIZE_MB * 1024 * 1024:
+                        raise HTTPException(status_code=413, detail=f"文件不能超过 {MAX_FILE_SIZE_MB} MB")
+                    f.write(chunk)
+            if not size:
+                raise HTTPException(status_code=400, detail="上传文件为空")
+        except Exception:
+            file_path.unlink(missing_ok=True)
+            raise
 
         # Validate file
         is_valid, error_msg = _validate_audio_file(file_path)
@@ -537,7 +561,7 @@ async def start_transcription(audio: UploadFile = File(...)):
             )
 
         # Create job
-        jobs[task_id] = {
+        add_job(jobs, task_id, {
             "status": "pending",
             "progress": 0.0,
             "file_path": str(file_path),
@@ -546,7 +570,7 @@ async def start_transcription(audio: UploadFile = File(...)):
             "error_category": None,
             "estimate": estimate,
             "start_time": time.time(),
-        }
+        })
 
         # Start transcription in background
         loop = asyncio.get_event_loop()
@@ -556,7 +580,7 @@ async def start_transcription(audio: UploadFile = File(...)):
             task_id,
             file_path,
             audio.filename or "Uploaded Audio",
-            None,  # force_engine: auto-detect
+            settings.stt_provider.value,
         )
 
         return TranscribeResponse(task_id=task_id, status="processing", estimate=estimate)
@@ -584,6 +608,17 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
     task_id = str(uuid.uuid4())
     file_path = Path(request.file_path)
 
+    # 路径白名单校验：只允许访问配置的音频/上传目录，拒绝目录穿越
+    if not is_path_allowed(file_path):
+        logger.warning(
+            "by-path 请求被拒绝：路径不在允许目录内",
+            file_path=str(file_path),
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="文件路径不在允许的目录范围内，仅支持音频下载/上传目录中的文件",
+        )
+
     # Validate file
     is_valid, error_msg = _validate_audio_file(file_path)
     if not is_valid:
@@ -594,11 +629,7 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
     estimate = None
     if duration:
         # 根据请求决定预估使用的引擎
-        if request.force_engine == "sensevoice":
-            provider = "sensevoice"
-        elif request.force_engine == "whisper":
-            provider = "whisper"
-        else:
+        if request.force_engine == "auto":
             # 自动检测语言来决定预估
             from core.smart_transcriber import SmartTranscriber
             temp_episode = PodcastEpisode(
@@ -608,6 +639,8 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
             )
             detection = SmartTranscriber().detect_language_only(temp_episode)
             provider = detection.get("engine", "whisper")
+        else:
+            provider = request.force_engine or settings.stt_provider.value
 
         estimate = calculate_estimate_time(duration, provider)
         logger.info(
@@ -619,7 +652,7 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
         )
 
     # Create job
-    jobs[task_id] = {
+    add_job(jobs, task_id, {
         "status": "pending",
         "progress": 0.0,
         "file_path": str(file_path),
@@ -628,7 +661,7 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
         "error_category": None,
         "estimate": estimate,
         "start_time": time.time(),
-    }
+    })
 
     # Start transcription in background with smart routing
     loop = asyncio.get_event_loop()
@@ -638,7 +671,7 @@ async def start_transcription_by_path(request: TranscribeByPathRequest):
         task_id,
         file_path,
         file_path.name,
-        request.force_engine,
+        request.force_engine or settings.stt_provider.value,
     )
 
     return TranscribeResponse(task_id=task_id, status="processing", estimate=estimate)

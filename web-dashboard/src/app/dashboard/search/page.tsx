@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";import {
   Search,
   Radio,
   ArrowRight,
@@ -32,9 +32,15 @@ interface Notification {
   type: "success" | "error" | "info";
   message: string;
   taskId?: string;
+  /** 可选操作按钮（如“去转录”） */
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export default function SearchPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PodcastResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -48,12 +54,26 @@ export default function SearchPage() {
   const [showDownloadManager, setShowDownloadManager] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const addNotification = (type: "success" | "error" | "info", message: string, taskId?: string) => {
+  const addNotification = (
+    type: "success" | "error" | "info",
+    message: string,
+    taskId?: string,
+    action?: Notification["action"]
+  ) => {
     const id = Math.random().toString(36).substr(2, 9);
-    setNotifications((prev) => [...prev, { id, type, message, taskId }]);
+    setNotifications((prev) => [...prev, { id, type, message, taskId, action }]);
     setTimeout(() => {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     }, 6000);
+  };
+
+  /** 跳转到文件库并自动触发指定音频的转录 */
+  const goTranscribe = (filePath: string) => {
+    if (!filePath) {
+      router.push("/dashboard/library");
+      return;
+    }
+    router.push(`/dashboard/library?transcribe_path=${encodeURIComponent(filePath)}`);
   };
 
   const handleSearch = async () => {
@@ -65,8 +85,12 @@ export default function SearchPage() {
     try {
       const data = await searchPodcasts(query);
       setResults(data.results);
-    } catch (err) {
-      setError("搜索失败，请检查后端服务是否运行");
+    } catch (err: any) {
+      const message =
+        err?.message && err.message !== "Failed to fetch"
+          ? err.message
+          : "搜索失败，请检查后端服务是否运行";
+      setError(message);
       console.error("Search error:", err);
     } finally {
       setIsSearching(false);
@@ -129,7 +153,15 @@ export default function SearchPage() {
             clearInterval(pollInterval);
             setDownloadingId(null);
             setDownloadSuccess(`《${status.result?.episode_title || "未知单集"}》下载完成`);
-            addNotification("success", `下载完成: ${status.result?.episode_title || "文件"}`, response.task_id);
+            addNotification(
+              "success",
+              `下载完成: ${status.result?.episode_title || "文件"}`,
+              response.task_id,
+              {
+                label: "去转录",
+                onClick: () => goTranscribe(status.result?.file_path || ""),
+              }
+            );
             setTimeout(() => setDownloadSuccess(null), 5000);
           } else if (status.status === "failed") {
             clearInterval(pollInterval);
@@ -226,6 +258,17 @@ export default function SearchPage() {
             >
               {n.type === "success" ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : n.type === "error" ? <AlertCircle className="w-4 h-4 flex-shrink-0" /> : <Info className="w-4 h-4 flex-shrink-0" />}
               <span className="text-xs">{n.message}</span>
+              {n.action && (
+                <button
+                  onClick={() => {
+                    n.action?.onClick();
+                    setNotifications((prev) => prev.filter((item) => item.id !== n.id));
+                  }}
+                  className="ml-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-medium transition flex-shrink-0 border border-white/10"
+                >
+                  {n.action.label}
+                </button>
+              )}
               <button
                 onClick={() => setNotifications((prev) => prev.filter((item) => item.id !== n.id))}
                 className="ml-auto p-0.5 text-gray-500 hover:text-white transition flex-shrink-0"

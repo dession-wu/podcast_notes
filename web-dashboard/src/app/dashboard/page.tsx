@@ -31,6 +31,7 @@ import {
   retryDownload,
   openDownloadFolder,
   DownloadHistoryItem,
+  listNotes,
 } from "@/lib/api";
 
 const quickActions = [
@@ -62,7 +63,7 @@ const quickActions = [
     icon: Image,
     label: "生成图片",
     description: "生成小红书封面图片",
-    href: "/dashboard/create",
+    href: "/dashboard/create?tab=image",
     color: "text-purple-400",
     bg: "bg-purple-400/10",
   },
@@ -121,16 +122,18 @@ export default function DashboardPage() {
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [openingTaskId, setOpeningTaskId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch download history
-      const historyRes = await getDownloadHistory(50);
+      const [historyRes, libraryRes, notesRes] = await Promise.all([
+        getDownloadHistory(50), getLibraryFiles("all", "", "time_desc", "all"), listNotes(1),
+      ]);
       const history = historyRes.history || [];
 
       // Fetch library files for counts
-      const libraryRes = await getLibraryFiles("all", "", "time_desc", "all");
       const files = libraryRes.files || [];
       const typeCounts = libraryRes.type_counts || {};
 
@@ -143,18 +146,11 @@ export default function DashboardPage() {
       const transcriptFiles = files.filter((f) => f.type === "transcript");
       const transcriptCount = transcriptFiles.length;
 
-      // Estimate total audio duration from transcript file sizes
-      // Rough estimate: 1KB of transcript ≈ 1 minute of audio
-      const totalTranscriptKB = transcriptFiles.reduce(
-        (sum, f) => sum + (f.size_mb || 0) * 1024,
-        0
-      );
-      const transcriptHours = Math.round((totalTranscriptKB / 60) * 10) / 10;
 
       setStats({
         totalDownloads: history.length,
-        totalTranscriptHours: transcriptHours,
-        totalNotes: transcriptCount,
+        totalTranscriptHours: transcriptCount,
+        totalNotes: notesRes.total,
         totalImages: typeCounts["image"] || 0,
         activeDownloads: activeCount,
         completedDownloads: completedCount,
@@ -163,19 +159,9 @@ export default function DashboardPage() {
 
       // Update download tasks for display
       setDownloadTasks(history.map((h) => ({ ...h, taskId: h.task_id })));
+      setLoadError("");
     } catch (err: any) {
-      console.error("Failed to fetch dashboard data:", err);
-      // Set empty state on error to prevent infinite loading
-      setStats({
-        totalDownloads: 0,
-        totalTranscriptHours: 0,
-        totalNotes: 0,
-        totalImages: 0,
-        activeDownloads: 0,
-        completedDownloads: 0,
-        failedDownloads: 0,
-      });
-      setDownloadTasks([]);
+      setLoadError(err instanceof Error ? err.message : "概览数据加载失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -236,7 +222,7 @@ export default function DashboardPage() {
       setDownloadTasks((prev) =>
         prev.map((task) =>
           task.task_id === taskId
-            ? { ...task, status: "processing", progress: 0, error: undefined, error_category: undefined }
+            ? { ...task, status: "processing", progress: 0, error: null, error_category: null }
             : task
         )
       );
@@ -307,9 +293,9 @@ export default function DashboardPage() {
       activeText: `${stats.activeDownloads} 个下载中`,
     },
     {
-      label: "转录音频",
+      label: "转录文本",
       value: stats.totalTranscriptHours > 0 ? stats.totalTranscriptHours.toString() : "0",
-      suffix: "小时",
+      suffix: "份",
     },
     {
       label: "生成笔记",
@@ -326,6 +312,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <DevBanner />
+      {loadError && <div role="alert" className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">{loadError} <button onClick={() => void fetchDashboardData()} className="ml-3 underline">重试</button></div>}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -416,7 +403,7 @@ export default function DashboardPage() {
                       {task.status === "completed" ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       ) : task.status === "failed" ? (
-                        getErrorIcon(task.error_category)
+                        getErrorIcon(task.error_category || undefined)
                       ) : (
                         <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                       )}

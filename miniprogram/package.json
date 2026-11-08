@@ -1,0 +1,5 @@
+{
+  "name": "podcast-notes-miniprogram",
+  "private": true,
+  "scripts": { "test": "node --test tests/*.test.cjs" }
+}

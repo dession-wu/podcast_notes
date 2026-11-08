@@ -22,9 +22,9 @@ export default function DashboardLayout({
           <Sidebar />
 
           {/* Main Content */}
-          <div className="flex-1 flex flex-col min-h-screen md:ml-0">
+          <div className="min-w-0 flex-1 flex flex-col min-h-screen md:ml-0">
             <TopBar />
-            <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+            <main className="min-w-0 flex-1 p-6 md:p-8 overflow-y-auto">
               {children}
             </main>
           </div>
