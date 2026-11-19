@@ -1,5 +1,5 @@
 {
-  "description": "播客转文字小程序本地开发版",
+  "description": "播客转文字",
   "appid": "wxcf1571f64e71f165",
   "projectname": "播客转文字",
   "compileType": "miniprogram",
@@ -30,7 +30,16 @@
   "libVersion": "latest",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "tests"
+      },
+      {
+        "type": "folder",
+        "value": "scripts"
+      }
+    ],
     "include": []
   },
   "editorSetting": {}

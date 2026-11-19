@@ -30,6 +30,6 @@ Page({
   open(e) { wx.navigateTo({ url:'/pages/episodes/episodes?id=' + encodeURIComponent(e.currentTarget.dataset.id) }); },
   aiSettings() { wx.navigateTo({url:'/pages/ai-settings/ai-settings'}); },
   privacy() {
-    wx.showModal({ title:'隐私与使用说明', content:'仅使用账号标识区分你的任务，使用AI提炼时原文会发送至百炼处理，个人API Key在服务器加密保存，平台AI免费额度按账号累计3次，不索取手机号、头像或昵称。任务默认保留7天，可在阅读页删除，以页面实际保留天数为准。最近搜索和字号偏好仅保存在本机。复制与导出均包含全文，请妥善保管文件。请仅处理有权使用的内容。当前本地开发版尚未正式发布，运营主体、联系方式和处理方式需上线前定稿。', showCancel:false });
+    wx.showModal({ title:'隐私与使用说明', content:'仅使用账号标识区分你的任务，使用AI提炼时原文会发送至百炼处理，个人API Key在服务器加密保存，平台AI免费额度按账号累计3次，不索取手机号、头像或昵称。任务默认保留7天，可在阅读页删除，以页面实际保留天数为准。最近搜索和字号偏好仅保存在本机。复制与导出均包含全文，请妥善保管文件。请仅处理有权使用的内容。运营主体：吴烨。隐私与资料问题联系：1770673611@qq.com。', showCancel:false });
   }
 });

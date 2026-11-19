@@ -9,7 +9,7 @@ async function until(fn,label){const end=Date.now()+45000;while(Date.now()<end){
 (async()=>{
  const config=require('../miniprogram/config');
  assert.equal(config.developmentLogin,false);
- assert.equal(config.apiBase,'https://api.podnotes.cloud');
+ assert.equal(config.apiBase,'https://podcast.podnotes.cloud');
  fs.mkdirSync(out,{recursive:true});
  const mini=await automator.connect({wsEndpoint:'ws://127.0.0.1:9421'});
  const watchdog=setTimeout(()=>{console.error('Native integration timed out');process.exit(1);},95000);

@@ -117,3 +117,7 @@ __pycache__/
 project.private.config.json
 *.pem
 *.key
+
+# Generated coverage and local verification artifacts
+.coverage
+.coverage.*
